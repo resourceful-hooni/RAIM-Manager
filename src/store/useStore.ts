@@ -15,6 +15,7 @@ export interface Counts {
   child_f: number;
   infant_m: number;
   infant_f: number;
+  noShow: number;
 }
 
 export interface VisitorRecord {
@@ -36,6 +37,7 @@ interface AppState {
   addGroupCount: (date: string, type: RecordType, session: string, countsToAdd: Counts, memoToAdd: string) => Promise<void>;
   resetCounts: (date: string, type: RecordType, session: string) => Promise<void>;
   updateMemo: (date: string, type: RecordType, session: string, memo: string) => Promise<void>;
+  importRecords: (records: VisitorRecord[]) => Promise<void>;
   getRecord: (date: string, type: RecordType, session: string) => VisitorRecord | undefined;
   getAllRecords: () => VisitorRecord[];
 }
@@ -49,7 +51,8 @@ const createDefaultRecord = (date: string, type: RecordType, session: string): V
     adult_m: 0, adult_f: 0, 
     youth_m: 0, youth_f: 0, 
     child_m: 0, child_f: 0, 
-    infant_m: 0, infant_f: 0 
+    infant_m: 0, infant_f: 0,
+    noShow: 0
   },
   memo: '',
   updatedAt: Date.now(),
@@ -147,6 +150,7 @@ export const useStore = create<AppState>((set, get) => ({
           child_f: current.counts.child_f + countsToAdd.child_f,
           infant_m: current.counts.infant_m + countsToAdd.infant_m,
           infant_f: current.counts.infant_f + countsToAdd.infant_f,
+          noShow: current.counts.noShow + (countsToAdd.noShow || 0),
         },
         memo: newMemo,
         updatedAt: Date.now()
@@ -176,6 +180,7 @@ export const useStore = create<AppState>((set, get) => ({
         if (countsToAdd.child_f > 0) updates['counts.child_f'] = increment(countsToAdd.child_f);
         if (countsToAdd.infant_m > 0) updates['counts.infant_m'] = increment(countsToAdd.infant_m);
         if (countsToAdd.infant_f > 0) updates['counts.infant_f'] = increment(countsToAdd.infant_f);
+        if (countsToAdd.noShow > 0) updates['counts.noShow'] = increment(countsToAdd.noShow);
         
         if (memoToAdd) {
           updates['memo'] = existing.memo ? `${existing.memo}\n${memoToAdd}` : memoToAdd;
@@ -199,7 +204,8 @@ export const useStore = create<AppState>((set, get) => ({
         adult_m: 0, adult_f: 0, 
         youth_m: 0, youth_f: 0, 
         child_m: 0, child_f: 0, 
-        infant_m: 0, infant_f: 0 
+        infant_m: 0, infant_f: 0,
+        noShow: 0
       },
       updatedAt: Date.now()
     };
@@ -242,6 +248,20 @@ export const useStore = create<AppState>((set, get) => ({
       await setDoc(doc(db, 'records', id), newRecord);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `records/${id}`);
+    }
+  },
+
+  importRecords: async (recordsToImport) => {
+    // We'll do this in chunks to avoid hitting Firestore limits if many records
+    const CHUNK_SIZE = 50;
+    for (let i = 0; i < recordsToImport.length; i += CHUNK_SIZE) {
+      const chunk = recordsToImport.slice(i, i + CHUNK_SIZE);
+      const promises = chunk.map(r => setDoc(doc(db, 'records', r.id), r));
+      try {
+        await Promise.all(promises);
+      } catch (error) {
+        console.error('Error importing chunk:', error);
+      }
     }
   },
 

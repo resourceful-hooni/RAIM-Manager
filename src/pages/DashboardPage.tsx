@@ -14,10 +14,7 @@ export default function DashboardPage() {
   const [viewMode, setViewMode] = useState<'daily' | 'monthly' | 'yearly'>('daily');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [visibleSeries, setVisibleSeries] = useState({
-    '성인(남)': true, '성인(여)': true,
-    '청소년(남)': true, '청소년(여)': true,
-    '어린이(남)': true, '어린이(여)': true,
-    '유아(남)': true, '유아(여)': true,
+    '성인': true, '청소년': true, '어린이': true, '유아': true,
     '자율관람': false, '예약관람': false
   });
   const { getAllRecords } = useStore();
@@ -108,10 +105,7 @@ export default function DashboardPage() {
         if (!hourlyMap[hourStr]) {
           hourlyMap[hourStr] = { 
             name: hourStr, 
-            '성인(남)': 0, '성인(여)': 0, 
-            '청소년(남)': 0, '청소년(여)': 0, 
-            '어린이(남)': 0, '어린이(여)': 0, 
-            '유아(남)': 0, '유아(여)': 0, 
+            '성인': 0, '청소년': 0, '어린이': 0, '유아': 0,
             자율관람: 0, 예약관람: 0 
           };
         }
@@ -124,14 +118,10 @@ export default function DashboardPage() {
         };
         const total = (Object.values(safeCounts) as number[]).reduce((a, b) => a + b, 0);
         
-        hourlyMap[hourStr]['성인(남)'] += safeCounts.adult_m;
-        hourlyMap[hourStr]['성인(여)'] += safeCounts.adult_f;
-        hourlyMap[hourStr]['청소년(남)'] += safeCounts.youth_m;
-        hourlyMap[hourStr]['청소년(여)'] += safeCounts.youth_f;
-        hourlyMap[hourStr]['어린이(남)'] += safeCounts.child_m;
-        hourlyMap[hourStr]['어린이(여)'] += safeCounts.child_f;
-        hourlyMap[hourStr]['유아(남)'] += safeCounts.infant_m;
-        hourlyMap[hourStr]['유아(여)'] += safeCounts.infant_f;
+        hourlyMap[hourStr]['성인'] += safeCounts.adult_m + safeCounts.adult_f;
+        hourlyMap[hourStr]['청소년'] += safeCounts.youth_m + safeCounts.youth_f;
+        hourlyMap[hourStr]['어린이'] += safeCounts.child_m + safeCounts.child_f;
+        hourlyMap[hourStr]['유아'] += safeCounts.infant_m + safeCounts.infant_f;
         
         if (r.type === 'autonomous') hourlyMap[hourStr].자율관람 += total;
         else hourlyMap[hourStr].예약관람 += total;
@@ -145,10 +135,7 @@ export default function DashboardPage() {
         if (!dailyMap[day]) {
           dailyMap[day] = { 
             name: `${day}일`, 
-            '성인(남)': 0, '성인(여)': 0, 
-            '청소년(남)': 0, '청소년(여)': 0, 
-            '어린이(남)': 0, '어린이(여)': 0, 
-            '유아(남)': 0, '유아(여)': 0, 
+            '성인': 0, '청소년': 0, '어린이': 0, '유아': 0,
             자율관람: 0, 예약관람: 0 
           };
         }
@@ -160,14 +147,10 @@ export default function DashboardPage() {
         };
         const total = (Object.values(safeCounts) as number[]).reduce((a, b) => a + b, 0);
         
-        dailyMap[day]['성인(남)'] += safeCounts.adult_m;
-        dailyMap[day]['성인(여)'] += safeCounts.adult_f;
-        dailyMap[day]['청소년(남)'] += safeCounts.youth_m;
-        dailyMap[day]['청소년(여)'] += safeCounts.youth_f;
-        dailyMap[day]['어린이(남)'] += safeCounts.child_m;
-        dailyMap[day]['어린이(여)'] += safeCounts.child_f;
-        dailyMap[day]['유아(남)'] += safeCounts.infant_m;
-        dailyMap[day]['유아(여)'] += safeCounts.infant_f;
+        dailyMap[day]['성인'] += safeCounts.adult_m + safeCounts.adult_f;
+        dailyMap[day]['청소년'] += safeCounts.youth_m + safeCounts.youth_f;
+        dailyMap[day]['어린이'] += safeCounts.child_m + safeCounts.child_f;
+        dailyMap[day]['유아'] += safeCounts.infant_m + safeCounts.infant_f;
         
         if (r.type === 'autonomous') dailyMap[day].자율관람 += total;
         else dailyMap[day].예약관람 += total;
@@ -181,10 +164,7 @@ export default function DashboardPage() {
         if (!monthlyMap[month]) {
           monthlyMap[month] = { 
             name: `${parseInt(month)}월`, 
-            '성인(남)': 0, '성인(여)': 0, 
-            '청소년(남)': 0, '청소년(여)': 0, 
-            '어린이(남)': 0, '어린이(여)': 0, 
-            '유아(남)': 0, '유아(여)': 0, 
+            '성인': 0, '청소년': 0, '어린이': 0, '유아': 0,
             자율관람: 0, 예약관람: 0 
           };
         }
@@ -196,14 +176,10 @@ export default function DashboardPage() {
         };
         const total = (Object.values(safeCounts) as number[]).reduce((a, b) => a + b, 0);
         
-        monthlyMap[month]['성인(남)'] += safeCounts.adult_m;
-        monthlyMap[month]['성인(여)'] += safeCounts.adult_f;
-        monthlyMap[month]['청소년(남)'] += safeCounts.youth_m;
-        monthlyMap[month]['청소년(여)'] += safeCounts.youth_f;
-        monthlyMap[month]['어린이(남)'] += safeCounts.child_m;
-        monthlyMap[month]['어린이(여)'] += safeCounts.child_f;
-        monthlyMap[month]['유아(남)'] += safeCounts.infant_m;
-        monthlyMap[month]['유아(여)'] += safeCounts.infant_f;
+        monthlyMap[month]['성인'] += safeCounts.adult_m + safeCounts.adult_f;
+        monthlyMap[month]['청소년'] += safeCounts.youth_m + safeCounts.youth_f;
+        monthlyMap[month]['어린이'] += safeCounts.child_m + safeCounts.child_f;
+        monthlyMap[month]['유아'] += safeCounts.infant_m + safeCounts.infant_f;
         
         if (r.type === 'autonomous') monthlyMap[month].자율관람 += total;
         else monthlyMap[month].예약관람 += total;
@@ -420,18 +396,11 @@ export default function DashboardPage() {
                 />
                 <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingTop: '10px' }} />
                 
-                {/* Detailed Breakdown */}
-                {visibleSeries['성인(남)'] && <Bar dataKey="성인(남)" stackId="age_gender" fill="#2563eb" radius={[0, 0, 4, 4]} />}
-                {visibleSeries['성인(여)'] && <Bar dataKey="성인(여)" stackId="age_gender" fill="#60a5fa" />}
-                
-                {visibleSeries['청소년(남)'] && <Bar dataKey="청소년(남)" stackId="age_gender" fill="#059669" />}
-                {visibleSeries['청소년(여)'] && <Bar dataKey="청소년(여)" stackId="age_gender" fill="#34d399" />}
-                
-                {visibleSeries['어린이(남)'] && <Bar dataKey="어린이(남)" stackId="age_gender" fill="#d97706" />}
-                {visibleSeries['어린이(여)'] && <Bar dataKey="어린이(여)" stackId="age_gender" fill="#fbbf24" />}
-                
-                {visibleSeries['유아(남)'] && <Bar dataKey="유아(남)" stackId="age_gender" fill="#e11d48" />}
-                {visibleSeries['유아(여)'] && <Bar dataKey="유아(여)" stackId="age_gender" fill="#fb7185" radius={[4, 4, 0, 0]} />}
+                {/* Age Breakdown */}
+                {visibleSeries['성인'] && <Bar dataKey="성인" stackId="age" fill="#3b82f6" radius={[0, 0, 0, 0]} />}
+                {visibleSeries['청소년'] && <Bar dataKey="청소년" stackId="age" fill="#10b981" />}
+                {visibleSeries['어린이'] && <Bar dataKey="어린이" stackId="age" fill="#f59e0b" />}
+                {visibleSeries['유아'] && <Bar dataKey="유아" stackId="age" fill="#f43f5e" radius={[4, 4, 0, 0]} />}
 
                 {/* Type */}
                 {visibleSeries.자율관람 && <Bar dataKey="자율관람" stackId="type" fill="#8b5cf6" radius={[4, 4, 4, 4]} />}

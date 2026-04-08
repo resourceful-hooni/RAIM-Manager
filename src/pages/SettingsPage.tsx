@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useStore } from '@/store/useStore';
-import { Download, Cloud, Info, Calendar, FileSpreadsheet } from 'lucide-react';
+import { Download, Cloud, Info, Calendar, FileSpreadsheet, Upload, AlertTriangle, FileUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { exportToXLSX } from '@/lib/exportUtils';
+import { parseVisitorFile } from '@/lib/importUtils';
+import { cn } from '@/lib/utils';
 
 export default function SettingsPage() {
-  const { getAllRecords } = useStore();
+  const { getAllRecords, importRecords } = useStore();
   const [exportDate, setExportDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [isImporting, setIsImporting] = useState(false);
 
   const handleExportXLSX = () => {
     const allRecords = getAllRecords();
@@ -18,6 +21,32 @@ export default function SettingsPage() {
     }
 
     exportToXLSX(exportDate, allRecords);
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsImporting(true);
+      const records = await parseVisitorFile(file);
+      
+      if (records.length === 0) {
+        alert('가져올 수 있는 데이터가 없습니다. 파일 형식(다목적실1 블록)을 확인해주세요.');
+        return;
+      }
+
+      if (window.confirm(`${records.length}개의 데이터를 가져오시겠습니까? 기존 데이터와 중복될 경우 덮어씌워집니다.`)) {
+        await importRecords(records);
+        alert('데이터를 성공적으로 가져왔습니다.');
+      }
+    } catch (error) {
+      console.error('Import Error:', error);
+      alert('데이터를 가져오는 중 오류가 발생했습니다.');
+    } finally {
+      setIsImporting(false);
+      e.target.value = ''; // Reset input
+    }
   };
 
   return (
@@ -54,6 +83,38 @@ export default function SettingsPage() {
             <Download className="w-4 h-4" />
             <span>{exportDate} 엑셀 다운로드</span>
           </button>
+        </div>
+
+        <div className="bg-white border border-slate-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)] rounded-3xl p-6 relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-1.5 h-full bg-amber-500 opacity-80" />
+          <h3 className="text-sm font-extrabold text-slate-800 mb-2 flex items-center tracking-tight">
+            <FileUp className="w-5 h-5 mr-2 text-amber-500" />
+            기존 데이터 가져오기 (XLSX/CSV)
+          </h3>
+          <p className="text-xs font-medium text-slate-500 mb-5 leading-relaxed">
+            기존 엑셀 파일(.xlsx, .csv)을 업로드하여 데이터를 일괄 등록합니다.<br/>
+            <span className="text-amber-600 font-bold flex items-center mt-1">
+              <AlertTriangle className="w-3 h-3 mr-1" />
+              다목적실1(자율주행 연구소) 데이터만 자동 추출됩니다.
+            </span>
+          </p>
+
+          <label className={cn(
+            "w-full flex items-center justify-center space-x-2 py-3.5 rounded-2xl text-sm font-bold transition-all shadow-md cursor-pointer",
+            isImporting 
+              ? "bg-slate-100 text-slate-400 cursor-not-allowed" 
+              : "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white active:scale-[0.98]"
+          )}>
+            <Upload className="w-4 h-4" />
+            <span>{isImporting ? '데이터 처리 중...' : '엑셀 파일 선택 및 업로드'}</span>
+            <input
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              onChange={handleImportFile}
+              disabled={isImporting}
+              className="hidden"
+            />
+          </label>
         </div>
 
         <div className="bg-white border border-slate-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)] rounded-3xl p-6 relative overflow-hidden">

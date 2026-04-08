@@ -5,7 +5,7 @@ import { vibrate, cn } from '@/lib/utils';
 import { RotateCcw, Plus, Minus, FileText, Clock, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
-const RESERVED_SESSIONS = ['1회차 (10:00)', '2회차 (10:30)', '3회차 (13:00)', '4회차 (13:30)', '5회차 (15:30)', '6회차 (16:00)'];
+const RESERVED_SESSIONS = ['1회차 (10:00)', '2회차 (10:30)', '3회차 (13:00)', '4회차 (13:30)', '5회차 (15:30)', '6회차 (16:00)', '단체'];
 const AUTONOMOUS_HOURS = Array.from({ length: 8 }, (_, i) => `${10 + i}시`);
 
 const CATEGORIES: { id: string; label: string; color: string; fields: { id: keyof Counts; label: string }[] }[] = [
@@ -39,7 +39,8 @@ const INITIAL_COUNTS: Counts = {
   adult_m: 0, adult_f: 0,
   youth_m: 0, youth_f: 0,
   child_m: 0, child_f: 0,
-  infant_m: 0, infant_f: 0
+  infant_m: 0, infant_f: 0,
+  noShow: 0
 };
 
 const getCurrentSession = (type: RecordType, now: Date = new Date()) => {
@@ -111,6 +112,7 @@ export default function CounterPage() {
     child_f: rawCounts.child_f || 0,
     infant_m: rawCounts.infant_m || 0,
     infant_f: rawCounts.infant_f || 0,
+    noShow: rawCounts.noShow || 0,
   };
   const memo = record?.memo || '';
 
@@ -282,8 +284,41 @@ export default function CounterPage() {
         ))}
       </div>
 
-      {/* Memo & Reset */}
+      {/* No-show & Reset */}
       <div className="space-y-4">
+        {type === 'reserved' && (
+          <div className="bg-white border border-slate-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)] rounded-2xl p-4 flex items-center justify-between group">
+            <div className="flex items-center space-x-3">
+              <div className="bg-slate-100 p-2.5 rounded-xl text-slate-500">
+                <Users className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-800">노쇼 (No-show)</h3>
+                <p className="text-[10px] text-slate-500 font-medium">예약 후 방문하지 않은 인원</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <span className="text-xl font-black text-slate-900 w-8 text-center">{counts.noShow}</span>
+              <div className="flex space-x-2">
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => handleDecrement('noShow')}
+                  className="bg-slate-50 hover:bg-slate-100 text-slate-400 rounded-xl p-2 transition-colors border border-slate-200/60"
+                >
+                  <Minus className="w-4 h-4" />
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleIncrement('noShow')}
+                  className="bg-slate-800 hover:bg-slate-900 text-white rounded-xl p-2 transition-all shadow-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                </motion.button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="relative">
           <div className="absolute top-3.5 left-3.5 text-slate-400">
             <FileText className="w-4 h-4" />

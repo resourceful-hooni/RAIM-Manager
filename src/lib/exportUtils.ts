@@ -13,7 +13,7 @@ export const exportToXLSX = (date: string, allRecords: VisitorRecord[]) => {
       ['서울 로봇AI 과학관 - 무인자동차 연구소 관람객 카운트'],
       [`날짜: ${date}`],
       [],
-      ['유형', '회차', '성인(남)', '성인(여)', '청소년(남)', '청소년(여)', '어린이(남)', '어린이(여)', '유아(남)', '유아(여)', '남성 소계', '여성 소계', '성인 합계', '청소년 합계', '어린이 합계', '유아 합계', '유형별 총계', '메모']
+      ['유형', '회차', '성인(남)', '성인(여)', '청소년(남)', '청소년(여)', '어린이(남)', '어린이(여)', '유아(남)', '유아(여)', '노쇼', '남성 소계', '여성 소계', '성인 합계', '청소년 합계', '어린이 합계', '유아 합계', '유형별 총계', '메모']
     ];
 
     const getCountsFor = (type: 'autonomous' | 'reserved', session: string) => {
@@ -22,7 +22,8 @@ export const exportToXLSX = (date: string, allRecords: VisitorRecord[]) => {
         adult_m: 0, adult_f: 0,
         youth_m: 0, youth_f: 0,
         child_m: 0, child_f: 0,
-        infant_m: 0, infant_f: 0
+        infant_m: 0, infant_f: 0,
+        noShow: 0
       };
     };
 
@@ -35,6 +36,7 @@ export const exportToXLSX = (date: string, allRecords: VisitorRecord[]) => {
     let totalYouthM = 0, totalYouthF = 0;
     let totalChildM = 0, totalChildF = 0;
     let totalInfantM = 0, totalInfantF = 0;
+    let totalNoShow = 0;
     let totalAuto = 0, totalReserved = 0;
 
     const autonomousSessions = Array.from({ length: 8 }, (_, i) => `${10 + i}시`);
@@ -58,6 +60,7 @@ export const exportToXLSX = (date: string, allRecords: VisitorRecord[]) => {
         totalYouthM += (c.youth_m || 0); totalYouthF += (c.youth_f || 0);
         totalChildM += (c.child_m || 0); totalChildF += (c.child_f || 0);
         totalInfantM += (c.infant_m || 0); totalInfantF += (c.infant_f || 0);
+        totalNoShow += (c.noShow || 0);
         typeTotal += rowTotal;
 
         data.push([
@@ -67,6 +70,7 @@ export const exportToXLSX = (date: string, allRecords: VisitorRecord[]) => {
           c.youth_m || 0, c.youth_f || 0,
           c.child_m || 0, c.child_f || 0,
           c.infant_m || 0, c.infant_f || 0,
+          c.noShow || 0,
           rowMale, rowFemale,
           rowAdult, rowYouth, rowChild, rowInfant,
           idx === 0 ? typeTotal : '',
@@ -90,6 +94,7 @@ export const exportToXLSX = (date: string, allRecords: VisitorRecord[]) => {
       totalYouthM, totalYouthF,
       totalChildM, totalChildF,
       totalInfantM, totalInfantF,
+      totalNoShow,
       grandTotalM, grandTotalF,
       totalAdultM + totalAdultF,
       totalYouthM + totalYouthF,
@@ -122,6 +127,7 @@ export const exportToXLSX = (date: string, allRecords: VisitorRecord[]) => {
       { wch: 12 }, { wch: 15 }, 
       { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, 
       { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, 
+      { wch: 8 }, // No-show
       { wch: 10 }, { wch: 10 }, 
       { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, 
       { wch: 12 }, { wch: 30 }
