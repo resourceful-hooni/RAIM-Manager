@@ -2,137 +2,139 @@ import * as XLSX from 'xlsx';
 import { VisitorRecord } from '@/store/useStore';
 
 export const exportToXLSX = (date: string, allRecords: VisitorRecord[]) => {
-  const records = allRecords.filter(r => r.date === date);
-  
-  const wb = XLSX.utils.book_new();
-  
-  // Prepare data rows
-  const data: any[][] = [
-    ['서울 로봇AI 과학관 - 무인자동차 연구소 관람객 카운트'],
-    [`날짜:`, date],
-    [],
-    ['유형', '회차', '성인(남)', '성인(여)', '청소년(남)', '청소년(여)', '어린이(남)', '어린이(여)', '유아(남)', '유아(여)', '남성 소계', '여성 소계', '성인 합계', '청소년 합계', '어린이 합계', '유아 합계', '유형별 총계', '메모']
-  ];
-
-  const getCountsFor = (type: 'autonomous' | 'reserved', session: string) => {
-    const r = records.find(rec => rec.type === type && rec.session === session);
-    return r?.counts || {
-      adult_m: 0, adult_f: 0,
-      youth_m: 0, youth_f: 0,
-      child_m: 0, child_f: 0,
-      infant_m: 0, infant_f: 0
-    };
-  };
-
-  const getMemoFor = (type: 'autonomous' | 'reserved', session: string) => {
-    const r = records.find(rec => rec.type === type && rec.session === session);
-    return r?.memo || '';
-  };
-
-  let totalAdultM = 0, totalAdultF = 0;
-  let totalYouthM = 0, totalYouthF = 0;
-  let totalChildM = 0, totalChildF = 0;
-  let totalInfantM = 0, totalInfantF = 0;
-  let totalAuto = 0, totalReserved = 0;
-
-  const autonomousSessions = Array.from({ length: 8 }, (_, i) => `${10 + i}시`);
-  const reservedSessions = ['1회차 (10:00)', '2회차 (10:30)', '3회차 (13:00)', '4회차 (13:30)', '5회차 (15:30)', '6회차 (16:00)'];
-
-  const processType = (type: 'autonomous' | 'reserved', label: string, sessions: string[]) => {
-    let typeTotal = 0;
-    sessions.forEach((s, idx) => {
-      const c = getCountsFor(type, s);
-      const m = getMemoFor(type, s);
-      
-      const rowMale = c.adult_m + c.youth_m + c.child_m + c.infant_m;
-      const rowFemale = c.adult_f + c.youth_f + c.child_f + c.infant_f;
-      const rowAdult = c.adult_m + c.adult_f;
-      const rowYouth = c.youth_m + c.youth_f;
-      const rowChild = c.child_m + c.child_f;
-      const rowInfant = c.infant_m + c.infant_f;
-      const rowTotal = rowMale + rowFemale;
-
-      totalAdultM += c.adult_m; totalAdultF += c.adult_f;
-      totalYouthM += c.youth_m; totalYouthF += c.youth_f;
-      totalChildM += c.child_m; totalChildF += c.child_f;
-      totalInfantM += c.infant_m; totalInfantF += c.infant_f;
-      typeTotal += rowTotal;
-
-      data.push([
-        label,
-        s,
-        c.adult_m, c.adult_f,
-        c.youth_m, c.youth_f,
-        c.child_m, c.child_f,
-        c.infant_m, c.infant_f,
-        rowMale, rowFemale,
-        rowAdult, rowYouth, rowChild, rowInfant,
-        idx === 0 ? 'PENDING_TOTAL' : '',
-        m
-      ]);
-    });
+  try {
+    const records = allRecords.filter(r => r.date === date);
     
-    const firstRowIdx = data.length - sessions.length;
-    data[firstRowIdx][16] = typeTotal;
-    return typeTotal;
-  };
+    const wb = XLSX.utils.book_new();
+    
+    // Prepare data rows
+    const data: any[][] = [
+      ['서울 로봇AI 과학관 - 무인자동차 연구소 관람객 카운트'],
+      [`날짜: ${date}`],
+      [],
+      ['유형', '회차', '성인(남)', '성인(여)', '청소년(남)', '청소년(여)', '어린이(남)', '어린이(여)', '유아(남)', '유아(여)', '남성 소계', '여성 소계', '성인 합계', '청소년 합계', '어린이 합계', '유아 합계', '유형별 총계', '메모']
+    ];
 
-  totalAuto = processType('autonomous', '자유관람', autonomousSessions);
-  totalReserved = processType('reserved', '예약관람', reservedSessions);
+    const getCountsFor = (type: 'autonomous' | 'reserved', session: string) => {
+      const r = records.find(rec => rec.type === type && rec.session === session);
+      return r?.counts || {
+        adult_m: 0, adult_f: 0,
+        youth_m: 0, youth_f: 0,
+        child_m: 0, child_f: 0,
+        infant_m: 0, infant_f: 0
+      };
+    };
 
-  const grandTotalM = totalAdultM + totalYouthM + totalChildM + totalInfantM;
-  const grandTotalF = totalAdultF + totalYouthF + totalChildF + totalInfantF;
-  const grandTotal = grandTotalM + grandTotalF;
+    const getMemoFor = (type: 'autonomous' | 'reserved', session: string) => {
+      const r = records.find(rec => rec.type === type && rec.session === session);
+      return r?.memo || '';
+    };
 
-  data.push([
-    '총계', '',
-    totalAdultM, totalAdultF,
-    totalYouthM, totalYouthF,
-    totalChildM, totalChildF,
-    totalInfantM, totalInfantF,
-    grandTotalM, grandTotalF,
-    totalAdultM + totalAdultF,
-    totalYouthM + totalYouthF,
-    totalChildM + totalChildF,
-    totalInfantM + totalInfantF,
-    grandTotal,
-    ''
-  ]);
+    let totalAdultM = 0, totalAdultF = 0;
+    let totalYouthM = 0, totalYouthF = 0;
+    let totalChildM = 0, totalChildF = 0;
+    let totalInfantM = 0, totalInfantF = 0;
+    let totalAuto = 0, totalReserved = 0;
 
-  data.push([]);
-  data.push(['요약 정보']);
-  data.push(['구분', '남', '여', '합계']);
-  data.push(['성인', totalAdultM, totalAdultF, totalAdultM + totalAdultF]);
-  data.push(['청소년', totalYouthM, totalYouthF, totalYouthM + totalYouthF]);
-  data.push(['어린이', totalChildM, totalChildF, totalChildM + totalChildF]);
-  data.push(['유아', totalInfantM, totalInfantF, totalInfantM + totalInfantF]);
-  data.push(['전체', grandTotalM, grandTotalF, grandTotal]);
-  
-  data.push([]);
-  data.push(['유형별 요약']);
-  data.push(['유형', '인원', '비율']);
-  data.push(['자유관람', totalAuto, grandTotal > 0 ? `${((totalAuto / grandTotal) * 100).toFixed(1)}%` : '0.0%']);
-  data.push(['예약관람', totalReserved, grandTotal > 0 ? `${((totalReserved / grandTotal) * 100).toFixed(1)}%` : '0.0%']);
-  data.push(['합계', grandTotal, '100.0%']);
+    const autonomousSessions = Array.from({ length: 8 }, (_, i) => `${10 + i}시`);
+    const reservedSessions = ['1회차 (10:00)', '2회차 (10:30)', '3회차 (13:00)', '4회차 (13:30)', '5회차 (15:30)', '6회차 (16:00)'];
 
-  const ws = XLSX.utils.aoa_to_sheet(data);
+    const processType = (type: 'autonomous' | 'reserved', label: string, sessions: string[]) => {
+      let typeTotal = 0;
+      sessions.forEach((s, idx) => {
+        const c = getCountsFor(type, s);
+        const m = getMemoFor(type, s);
+        
+        const rowMale = (c.adult_m || 0) + (c.youth_m || 0) + (c.child_m || 0) + (c.infant_m || 0);
+        const rowFemale = (c.adult_f || 0) + (c.youth_f || 0) + (c.child_f || 0) + (c.infant_f || 0);
+        const rowAdult = (c.adult_m || 0) + (c.adult_f || 0);
+        const rowYouth = (c.youth_m || 0) + (c.youth_f || 0);
+        const rowChild = (c.child_m || 0) + (c.child_f || 0);
+        const rowInfant = (c.infant_m || 0) + (c.infant_f || 0);
+        const rowTotal = rowMale + rowFemale;
 
-  // Column widths
-  ws['!cols'] = [
-    { wch: 12 }, // 유형
-    { wch: 15 }, // 회차
-    { wch: 8 }, { wch: 8 }, // 성인
-    { wch: 8 }, { wch: 8 }, // 청소년
-    { wch: 8 }, { wch: 8 }, // 어린이
-    { wch: 8 }, { wch: 8 }, // 유아
-    { wch: 10 }, { wch: 10 }, // 성별소계
-    { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, // 연령대별 합계
-    { wch: 12 }, // 유형별 총계
-    { wch: 30 }, // 메모
-  ];
+        totalAdultM += (c.adult_m || 0); totalAdultF += (c.adult_f || 0);
+        totalYouthM += (c.youth_m || 0); totalYouthF += (c.youth_f || 0);
+        totalChildM += (c.child_m || 0); totalChildF += (c.child_f || 0);
+        totalInfantM += (c.infant_m || 0); totalInfantF += (c.infant_f || 0);
+        typeTotal += rowTotal;
 
-  XLSX.utils.book_append_sheet(wb, ws, 'Visitor Data');
-  const fileName = `${date.replace(/-/g, '')}_자율주행연구소_방문객수.xlsx`;
-  XLSX.writeFile(wb, fileName);
+        data.push([
+          label,
+          s,
+          c.adult_m || 0, c.adult_f || 0,
+          c.youth_m || 0, c.youth_f || 0,
+          c.child_m || 0, c.child_f || 0,
+          c.infant_m || 0, c.infant_f || 0,
+          rowMale, rowFemale,
+          rowAdult, rowYouth, rowChild, rowInfant,
+          idx === 0 ? 'PENDING' : '',
+          m
+        ]);
+      });
+      
+      const firstRowIdx = data.length - sessions.length;
+      data[firstRowIdx][16] = typeTotal;
+      return typeTotal;
+    };
+
+    totalAuto = processType('autonomous', '자유관람', autonomousSessions);
+    totalReserved = processType('reserved', '예약관람', reservedSessions);
+
+    const grandTotalM = totalAdultM + totalYouthM + totalChildM + totalInfantM;
+    const grandTotalF = totalAdultF + totalYouthF + totalChildF + totalInfantF;
+    const grandTotal = grandTotalM + grandTotalF;
+
+    data.push([
+      '총계', '',
+      totalAdultM, totalAdultF,
+      totalYouthM, totalYouthF,
+      totalChildM, totalChildF,
+      totalInfantM, totalInfantF,
+      grandTotalM, grandTotalF,
+      totalAdultM + totalAdultF,
+      totalYouthM + totalYouthF,
+      totalChildM + totalChildF,
+      totalInfantM + totalInfantF,
+      grandTotal,
+      ''
+    ]);
+
+    data.push([]);
+    data.push(['요약 정보']);
+    data.push(['구분', '남', '여', '합계']);
+    data.push(['성인', totalAdultM, totalAdultF, totalAdultM + totalAdultF]);
+    data.push(['청소년', totalYouthM, totalYouthF, totalYouthM + totalYouthF]);
+    data.push(['어린이', totalChildM, totalChildF, totalChildM + totalChildF]);
+    data.push(['유아', totalInfantM, totalInfantF, totalInfantM + totalInfantF]);
+    data.push(['전체', grandTotalM, grandTotalF, grandTotal]);
+    
+    data.push([]);
+    data.push(['유형별 요약']);
+    data.push(['유형', '인원', '비율']);
+    data.push(['자유관람', totalAuto, grandTotal > 0 ? `${((totalAuto / grandTotal) * 100).toFixed(1)}%` : '0.0%']);
+    data.push(['예약관람', totalReserved, grandTotal > 0 ? `${((totalReserved / grandTotal) * 100).toFixed(1)}%` : '0.0%']);
+    data.push(['합계', grandTotal, '100.0%']);
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+
+    // Column widths
+    ws['!cols'] = [
+      { wch: 12 }, { wch: 15 }, 
+      { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, 
+      { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, 
+      { wch: 10 }, { wch: 10 }, 
+      { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, 
+      { wch: 12 }, { wch: 30 }
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Visitor Data');
+    
+    const fileName = `${date.replace(/-/g, '')}_자율주행연구소_방문객수.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  } catch (error) {
+    console.error('Excel Export Error:', error);
+    alert('엑셀 내보내기 중 오류가 발생했습니다. 콘솔 로그를 확인해주세요.');
+  }
 };
 
