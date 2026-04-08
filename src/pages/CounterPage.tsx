@@ -166,7 +166,7 @@ export default function CounterPage() {
           <button 
             onClick={() => setIsAutoSync(true)}
             className={cn(
-              "flex items-center space-x-1.5 text-xs px-3 py-1.5 rounded-full transition-all",
+              "flex items-center space-x-1.5 text-xs px-3 py-1.5 rounded-full transition-all active:scale-95",
               isAutoSync 
                 ? "bg-blue-50 text-blue-600 font-bold border border-blue-200/60 shadow-sm" 
                 : "bg-slate-50 text-slate-500 hover:bg-slate-100 font-medium border border-slate-200/60"
@@ -180,7 +180,7 @@ export default function CounterPage() {
         <div className="flex bg-slate-50 rounded-xl p-1.5 border border-slate-100">
           <button
             className={cn(
-              "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all",
+              "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all active:scale-95",
               type === 'autonomous' ? "bg-white text-blue-600 shadow-sm border border-slate-200/60" : "text-slate-500 hover:text-slate-700"
             )}
             onClick={() => setType('autonomous')}
@@ -189,7 +189,7 @@ export default function CounterPage() {
           </button>
           <button
             className={cn(
-              "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all",
+              "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all active:scale-95",
               type === 'reserved' ? "bg-white text-blue-600 shadow-sm border border-slate-200/60" : "text-slate-500 hover:text-slate-700"
             )}
             onClick={() => setType('reserved')}
@@ -236,7 +236,7 @@ export default function CounterPage() {
       {/* Group Entry Button */}
       <button
         onClick={() => setIsGroupModalOpen(true)}
-        className="w-full flex items-center justify-center space-x-2 py-4 rounded-2xl text-blue-700 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 transition-all text-sm font-bold border border-blue-200/60 shadow-sm active:scale-[0.98]"
+        className="w-full flex items-center justify-center space-x-2 py-4 rounded-2xl text-blue-700 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 transition-all text-sm font-bold border border-blue-200/60 shadow-sm active:scale-95"
       >
         <Users className="w-5 h-5" />
         <span>단체 입력 모드 (한 번에 여러 명 입력)</span>
@@ -265,7 +265,7 @@ export default function CounterPage() {
                     <motion.button
                       whileTap={{ scale: 0.9 }}
                       onClick={() => handleDecrement(field.id)}
-                      className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-400 rounded-xl py-1.5 flex items-center justify-center transition-colors border border-slate-200/60"
+                      className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-400 rounded-xl py-1.5 flex items-center justify-center transition-all border border-slate-200/60"
                     >
                       <Minus className="w-3.5 h-3.5" />
                     </motion.button>
@@ -303,7 +303,7 @@ export default function CounterPage() {
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={() => handleDecrement('noShow')}
-                  className="bg-slate-50 hover:bg-slate-100 text-slate-400 rounded-xl p-2 transition-colors border border-slate-200/60"
+                  className="bg-slate-50 hover:bg-slate-100 text-slate-400 rounded-xl p-2 transition-all border border-slate-200/60"
                 >
                   <Minus className="w-4 h-4" />
                 </motion.button>
@@ -333,7 +333,7 @@ export default function CounterPage() {
 
         <button
           onClick={handleReset}
-          className="w-full flex items-center justify-center space-x-2 py-3.5 rounded-2xl text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors text-sm font-bold border border-rose-100/50 shadow-sm"
+          className="w-full flex items-center justify-center space-x-2 py-3.5 rounded-2xl text-rose-600 bg-rose-50 hover:bg-rose-100 transition-all text-sm font-bold border border-rose-100/50 shadow-sm active:scale-95"
         >
           <RotateCcw className="w-4 h-4" />
           <span>현재 세션 초기화</span>
@@ -355,7 +355,7 @@ export default function CounterPage() {
                   <Users className="w-5 h-5 mr-2 text-blue-600" />
                   단체 입력
                 </h3>
-                <button onClick={() => setIsGroupModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <button onClick={() => setIsGroupModalOpen(false)} className="text-slate-400 hover:text-slate-600 active:scale-95 transition-transform">
                   ✕
                 </button>
               </div>
@@ -369,14 +369,30 @@ export default function CounterPage() {
                         {cat.fields.map(field => (
                           <div key={field.id} className="flex flex-col">
                             <label className="text-[10px] font-medium text-slate-500 mb-1">{field.label}</label>
-                            <input
-                              type="number"
-                              min="0"
-                              value={groupCounts[field.id] || ''}
-                              onChange={(e) => setGroupCounts(prev => ({ ...prev, [field.id]: parseInt(e.target.value) || 0 }))}
-                              className="border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-500 text-sm"
-                              placeholder="0"
-                            />
+                            <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                              <button
+                                type="button"
+                                onClick={() => setGroupCounts(prev => ({ ...prev, [field.id]: Math.max(0, (prev[field.id] || 0) - 1) }))}
+                                className="px-3 py-2 bg-slate-50 text-slate-500 hover:bg-slate-100 border-r border-slate-200 active:bg-slate-200 transition-all active:scale-95"
+                              >
+                                <Minus className="w-4 h-4" />
+                              </button>
+                              <input
+                                type="number"
+                                min="0"
+                                value={groupCounts[field.id] || ''}
+                                onChange={(e) => setGroupCounts(prev => ({ ...prev, [field.id]: parseInt(e.target.value) || 0 }))}
+                                className="w-full text-center py-2 text-slate-900 focus:outline-none text-sm font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                placeholder="0"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setGroupCounts(prev => ({ ...prev, [field.id]: (prev[field.id] || 0) + 1 }))}
+                                className="px-3 py-2 bg-slate-50 text-slate-500 hover:bg-slate-100 border-l border-slate-200 active:bg-slate-200 transition-all active:scale-95"
+                              >
+                                <Plus className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -399,13 +415,13 @@ export default function CounterPage() {
               <div className="p-4 bg-slate-50 border-t border-slate-100 flex space-x-2">
                 <button
                   onClick={() => setIsGroupModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl text-slate-600 bg-white border border-slate-200 font-medium text-sm hover:bg-slate-50"
+                  className="flex-1 py-2.5 rounded-xl text-slate-600 bg-white border border-slate-200 font-medium text-sm hover:bg-slate-50 active:scale-95 transition-transform"
                 >
                   취소
                 </button>
                 <button
                   onClick={handleGroupSubmit}
-                  className="flex-1 py-2.5 rounded-xl text-white bg-blue-600 font-medium text-sm hover:bg-blue-700 shadow-sm"
+                  className="flex-1 py-2.5 rounded-xl text-white bg-blue-600 font-medium text-sm hover:bg-blue-700 shadow-sm active:scale-95 transition-transform"
                 >
                   일괄 추가
                 </button>

@@ -42,7 +42,7 @@ export default function Layout() {
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
           <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-600 rounded-2xl flex items-center justify-center border border-blue-100 shadow-inner overflow-hidden transform rotate-3">
             {!logoError ? (
-              <img src="/logo.png" alt="RAIM Logo" className="w-full h-full object-cover transform -rotate-3" onError={() => setLogoError(true)} />
+              <img src="/logo.png" alt="RAIM Logo" className="w-full h-full object-cover transform -rotate-3" referrerPolicy="no-referrer" onError={() => setLogoError(true)} />
             ) : (
               <Bot className="w-10 h-10 transform -rotate-3" />
             )}
@@ -51,7 +51,7 @@ export default function Layout() {
           <p className="text-sm text-slate-500 mb-10 font-medium">서울 로봇AI 과학관 무인자동차 연구소</p>
           <button
             onClick={signIn}
-            className="w-full flex items-center justify-center space-x-2 bg-slate-900 hover:bg-slate-800 text-white py-3.5 rounded-xl text-sm font-semibold transition-all shadow-md hover:shadow-lg active:scale-[0.98]"
+            className="w-full flex items-center justify-center space-x-2 bg-slate-900 hover:bg-slate-800 text-white py-3.5 rounded-xl text-sm font-semibold transition-all shadow-md hover:shadow-lg active:scale-95"
           >
             <LogIn className="w-4 h-4" />
             <span>관리자 로그인</span>
@@ -72,7 +72,7 @@ export default function Layout() {
         <NavLink to="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity group">
           <div className="w-9 h-9 bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-600 rounded-xl flex items-center justify-center border border-blue-100 shadow-sm overflow-hidden shrink-0 group-hover:shadow-md transition-all">
             {!logoError ? (
-              <img src="/logo.png" alt="RAIM Logo" className="w-full h-full object-cover" onError={() => setLogoError(true)} />
+              <img src="/logo.png" alt="RAIM Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={() => setLogoError(true)} />
             ) : (
               <Bot className="w-5 h-5" />
             )}
@@ -94,7 +94,7 @@ export default function Layout() {
               <span className="text-rose-700 font-medium">Offline</span>
             </div>
           )}
-          <button onClick={signOut} className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors" title="로그아웃">
+          <button onClick={signOut} className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-all active:scale-95" title="로그아웃">
             <LogOut className="w-4 h-4" />
           </button>
         </div>
@@ -124,7 +124,7 @@ function NavItem({ to, icon, label }: { to: string; icon: React.ReactNode; label
       to={to}
       className={({ isActive }) =>
         cn(
-          "flex flex-col items-center justify-center w-16 h-14 rounded-xl transition-all duration-200",
+          "flex flex-col items-center justify-center w-16 h-14 rounded-xl transition-all duration-200 active:scale-95",
           isActive 
             ? "text-blue-600 bg-blue-50/80 font-bold" 
             : "text-slate-400 hover:text-slate-600 hover:bg-slate-50 font-medium"

@@ -31,6 +31,7 @@ export const parseVisitorFile = async (file: File): Promise<VisitorRecord[]> => 
 
   const records: VisitorRecord[] = [];
   let currentDate = '';
+  let currentRoom = '';
   let currentYear = new Date().getFullYear();
 
   for (let i = 0; i < rows.length; i++) {
@@ -61,14 +62,32 @@ export const parseVisitorFile = async (file: File): Promise<VisitorRecord[]> => 
 
     if (isDateRow) {
       currentDate = parsedDate;
+      currentRoom = ''; // Reset room on new date
       console.log('Detected Date:', currentDate);
       continue;
     }
 
     if (!currentDate) continue;
 
-    // We are looking for "다목적실1" block
     const label = String(row[1] || '').trim();
+    
+    // Track which room block we are in
+    if (label.includes('다목적실')) {
+      currentRoom = label;
+      // Also, 다목적실1 row itself might have a memo in column 13
+      if (currentRoom === '다목적실1') {
+        const roomMemo = String(row[13] || '').trim();
+        if (roomMemo) {
+          // We can store this memo somewhere, or just log it.
+          // Currently, memos are per session. We'll attach it to '상시' or '단체' if needed, 
+          // but usually it's a general memo. Let's just keep it in mind.
+        }
+      }
+      continue;
+    }
+
+    // Only process sessions if we are in 다목적실1
+    if (currentRoom !== '다목적실1') continue;
     
     // If we find a session label, parse it
     const mapping = SESSION_MAP[label];

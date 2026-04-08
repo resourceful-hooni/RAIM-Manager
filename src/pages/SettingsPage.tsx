@@ -78,7 +78,7 @@ export default function SettingsPage() {
 
           <button
             onClick={handleExportXLSX}
-            className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white py-3.5 rounded-2xl text-sm font-bold transition-all shadow-md hover:shadow-lg active:scale-[0.98] flex items-center justify-center space-x-2"
+            className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white py-3.5 rounded-2xl text-sm font-bold transition-all shadow-md hover:shadow-lg active:scale-95 flex items-center justify-center space-x-2"
           >
             <Download className="w-4 h-4" />
             <span>{exportDate} 엑셀 다운로드</span>
