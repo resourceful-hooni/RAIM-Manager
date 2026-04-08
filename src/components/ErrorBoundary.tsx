@@ -50,7 +50,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <p className="text-sm text-slate-600 mb-6 break-words">{errorMessage}</p>
             <button
               onClick={() => window.location.reload()}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-95"
             >
               새로고침
             </button>
