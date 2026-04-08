@@ -6,14 +6,41 @@ import { RotateCcw, Plus, Minus, FileText, Clock, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 const RESERVED_SESSIONS = ['1회차 (10:00)', '2회차 (10:30)', '3회차 (13:00)', '4회차 (13:30)', '5회차 (15:30)', '6회차 (16:00)'];
-const AUTONOMOUS_HOURS = Array.from({ length: 8 }, (_, i) => `${10 + i}:00`);
+const AUTONOMOUS_HOURS = Array.from({ length: 8 }, (_, i) => `${10 + i}시`);
 
-const CATEGORIES: { id: keyof Counts; label: string; color: string }[] = [
-  { id: 'adult', label: '성인 (Adult)', color: 'bg-blue-500' },
-  { id: 'youth', label: '청소년 (Youth)', color: 'bg-emerald-500' },
-  { id: 'child', label: '어린이 (Child)', color: 'bg-amber-500' },
-  { id: 'infant', label: '유아 (Infant)', color: 'bg-rose-500' },
+const CATEGORIES: { id: string; label: string; color: string; fields: { id: keyof Counts; label: string }[] }[] = [
+  { 
+    id: 'adult', 
+    label: '성인 (Adult)', 
+    color: 'bg-blue-500',
+    fields: [{ id: 'adult_m', label: '남' }, { id: 'adult_f', label: '여' }]
+  },
+  { 
+    id: 'youth', 
+    label: '청소년 (Youth)', 
+    color: 'bg-emerald-500',
+    fields: [{ id: 'youth_m', label: '남' }, { id: 'youth_f', label: '여' }]
+  },
+  { 
+    id: 'child', 
+    label: '어린이 (Child)', 
+    color: 'bg-amber-500',
+    fields: [{ id: 'child_m', label: '남' }, { id: 'child_f', label: '여' }]
+  },
+  { 
+    id: 'infant', 
+    label: '유아 (Infant)', 
+    color: 'bg-rose-500',
+    fields: [{ id: 'infant_m', label: '남' }, { id: 'infant_f', label: '여' }]
+  },
 ];
+
+const INITIAL_COUNTS: Counts = {
+  adult_m: 0, adult_f: 0,
+  youth_m: 0, youth_f: 0,
+  child_m: 0, child_f: 0,
+  infant_m: 0, infant_f: 0
+};
 
 const getCurrentSession = (type: RecordType, now: Date = new Date()) => {
   const hours = now.getHours();
@@ -22,7 +49,7 @@ const getCurrentSession = (type: RecordType, now: Date = new Date()) => {
 
   if (type === 'autonomous') {
     const currentHour = Math.max(10, Math.min(17, hours));
-    return `${currentHour}:00`;
+    return `${currentHour}시`;
   } else {
     const slots = [
       { time: 10 * 60, label: '1회차 (10:00)' },
@@ -52,7 +79,7 @@ export default function CounterPage() {
   
   // Group Entry Modal State
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
-  const [groupCounts, setGroupCounts] = useState<Counts>({ adult: 0, youth: 0, child: 0, infant: 0 });
+  const [groupCounts, setGroupCounts] = useState<Counts>(INITIAL_COUNTS);
   const [groupMemo, setGroupMemo] = useState('');
   
   const { getRecord, incrementCount, decrementCount, resetCounts, updateMemo, addGroupCount } = useStore();
@@ -74,7 +101,17 @@ export default function CounterPage() {
   }, [isAutoSync, type]);
 
   const record = getRecord(date, type, session);
-  const counts = record?.counts || { adult: 0, youth: 0, child: 0, infant: 0 };
+  const rawCounts = record?.counts || INITIAL_COUNTS;
+  const counts = {
+    adult_m: rawCounts.adult_m || 0,
+    adult_f: rawCounts.adult_f || 0,
+    youth_m: rawCounts.youth_m || 0,
+    youth_f: rawCounts.youth_f || 0,
+    child_m: rawCounts.child_m || 0,
+    child_f: rawCounts.child_f || 0,
+    infant_m: rawCounts.infant_m || 0,
+    infant_f: rawCounts.infant_f || 0,
+  };
   const memo = record?.memo || '';
 
   const handleIncrement = (category: keyof Counts) => {
@@ -106,13 +143,14 @@ export default function CounterPage() {
   };
 
   const handleGroupSubmit = () => {
-    if (groupCounts.adult === 0 && groupCounts.youth === 0 && groupCounts.child === 0 && groupCounts.infant === 0) {
+    const total = (Object.values(groupCounts) as number[]).reduce((a, b) => a + b, 0);
+    if (total === 0) {
       alert('입력할 인원을 설정해주세요.');
       return;
     }
     addGroupCount(date, type, session, groupCounts, groupMemo);
     setIsGroupModalOpen(false);
-    setGroupCounts({ adult: 0, youth: 0, child: 0, infant: 0 });
+    setGroupCounts(INITIAL_COUNTS);
     setGroupMemo('');
     vibrate([50, 50, 50]);
   };
@@ -120,28 +158,28 @@ export default function CounterPage() {
   return (
     <div className="p-4 space-y-6 max-w-lg mx-auto">
       {/* Controls */}
-      <div className="space-y-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
-        <div className="flex justify-between items-center mb-1">
-          <h2 className="text-sm font-bold text-slate-800">관람 모드 및 시간</h2>
+      <div className="space-y-4 bg-white p-5 rounded-3xl border border-slate-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)] relative overflow-hidden">
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-sm font-extrabold text-slate-800 tracking-tight">관람 모드 및 시간</h2>
           <button 
             onClick={() => setIsAutoSync(true)}
             className={cn(
-              "flex items-center space-x-1 text-xs px-2 py-1 rounded-full transition-colors",
+              "flex items-center space-x-1.5 text-xs px-3 py-1.5 rounded-full transition-all",
               isAutoSync 
-                ? "bg-blue-50 text-blue-600 font-medium border border-blue-200" 
-                : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                ? "bg-blue-50 text-blue-600 font-bold border border-blue-200/60 shadow-sm" 
+                : "bg-slate-50 text-slate-500 hover:bg-slate-100 font-medium border border-slate-200/60"
             )}
           >
-            <Clock className={cn("w-3 h-3", isAutoSync && "animate-pulse")} />
+            <Clock className={cn("w-3.5 h-3.5", isAutoSync && "animate-pulse")} />
             <span>{isAutoSync ? '실시간 연동 중' : '실시간 연동 켜기'}</span>
           </button>
         </div>
 
-        <div className="flex bg-slate-100 rounded-lg p-1">
+        <div className="flex bg-slate-50 rounded-xl p-1.5 border border-slate-100">
           <button
             className={cn(
-              "flex-1 py-2 text-sm font-medium rounded-md transition-all",
-              type === 'autonomous' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+              "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all",
+              type === 'autonomous' ? "bg-white text-blue-600 shadow-sm border border-slate-200/60" : "text-slate-500 hover:text-slate-700"
             )}
             onClick={() => setType('autonomous')}
           >
@@ -149,8 +187,8 @@ export default function CounterPage() {
           </button>
           <button
             className={cn(
-              "flex-1 py-2 text-sm font-medium rounded-md transition-all",
-              type === 'reserved' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+              "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all",
+              type === 'reserved' ? "bg-white text-blue-600 shadow-sm border border-slate-200/60" : "text-slate-500 hover:text-slate-700"
             )}
             onClick={() => setType('reserved')}
           >
@@ -164,57 +202,81 @@ export default function CounterPage() {
             value={date}
             onChange={handleDateChange}
             className={cn(
-              "bg-white border rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-blue-500 flex-1 transition-colors",
+              "bg-white border rounded-xl px-4 py-3 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 flex-1 transition-all shadow-sm",
               isAutoSync ? "border-blue-200 bg-blue-50/30" : "border-slate-200"
             )}
           />
-          <select
-            value={session}
-            onChange={handleSessionChange}
-            className={cn(
-              "bg-white border rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-blue-500 flex-1 transition-colors",
-              isAutoSync ? "border-blue-200 bg-blue-50/30" : "border-slate-200"
-            )}
-          >
-            {(type === 'autonomous' ? AUTONOMOUS_HOURS : RESERVED_SESSIONS).map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+          {type === 'autonomous' && isAutoSync ? (
+            <div className="flex-1 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/60 rounded-xl px-4 py-3 text-sm text-blue-700 flex items-center justify-between font-bold shadow-sm">
+              <div className="flex items-center">
+                <Clock className="w-4 h-4 mr-2 text-blue-500" />
+                <span>{session} (현재)</span>
+              </div>
+              <span className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full shadow-sm">자동</span>
+            </div>
+          ) : (
+            <select
+              value={session}
+              onChange={handleSessionChange}
+              className={cn(
+                "bg-white border rounded-xl px-4 py-3 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 flex-1 transition-all shadow-sm appearance-none",
+                isAutoSync ? "border-blue-200 bg-blue-50/30" : "border-slate-200"
+              )}
+            >
+              {(type === 'autonomous' ? AUTONOMOUS_HOURS : RESERVED_SESSIONS).map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 
       {/* Group Entry Button */}
       <button
         onClick={() => setIsGroupModalOpen(true)}
-        className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-100 shadow-sm"
+        className="w-full flex items-center justify-center space-x-2 py-4 rounded-2xl text-blue-700 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 transition-all text-sm font-bold border border-blue-200/60 shadow-sm active:scale-[0.98]"
       >
         <Users className="w-5 h-5" />
         <span>단체 입력 모드 (한 번에 여러 명 입력)</span>
       </button>
 
       {/* Counters */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         {CATEGORIES.map((cat) => (
-          <div key={cat.id} className="bg-white border border-slate-200 shadow-sm rounded-2xl p-4 flex flex-col items-center relative overflow-hidden">
-            <div className={cn("absolute top-0 left-0 right-0 h-1 opacity-80", cat.color)} />
-            <span className="text-slate-500 text-sm font-medium mb-2">{cat.label}</span>
-            <span className="text-5xl font-bold text-slate-900 mb-4 tracking-tighter">{counts[cat.id]}</span>
+          <div key={cat.id} className="bg-white border border-slate-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)] rounded-2xl p-3 relative overflow-hidden group">
+            <div className={cn("absolute top-0 left-0 right-0 h-1.5 opacity-90 transition-all group-hover:h-2", cat.color)} />
+            <div className="flex justify-between items-center mb-3 mt-1">
+              <span className="text-slate-800 font-extrabold text-xs tracking-tight">{cat.label.split(' ')[0]}</span>
+              <span className="text-xl font-black text-slate-900 tracking-tighter">
+                {(counts[cat.fields[0].id] as number) + (counts[cat.fields[1].id] as number)}
+              </span>
+            </div>
             
-            <div className="flex w-full space-x-2">
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={() => handleDecrement(cat.id)}
-                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl py-3 flex items-center justify-center transition-colors"
-              >
-                <Minus className="w-6 h-6" />
-              </motion.button>
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={() => handleIncrement(cat.id)}
-                className={cn("flex-[2] text-white rounded-xl py-3 flex items-center justify-center transition-colors", cat.color.replace('bg-', 'bg-opacity-90 hover:bg-opacity-100 bg-'))}
-              >
-                <Plus className="w-8 h-8" />
-              </motion.button>
+            <div className="space-y-3">
+              {cat.fields.map(field => (
+                <div key={field.id} className="space-y-1.5">
+                  <div className="flex justify-between items-end px-1">
+                    <span className="text-[10px] font-semibold text-slate-500">{field.label}</span>
+                    <span className="text-sm font-bold text-slate-900">{counts[field.id]}</span>
+                  </div>
+                  <div className="flex space-x-1.5">
+                    <motion.button
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => handleDecrement(field.id)}
+                      className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-400 rounded-xl py-1.5 flex items-center justify-center transition-colors border border-slate-200/60"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </motion.button>
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => handleIncrement(field.id)}
+                      className={cn("flex-[2] text-white rounded-xl py-1.5 flex items-center justify-center transition-all shadow-sm hover:shadow active:shadow-none", cat.color)}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </motion.button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         ))}
@@ -223,20 +285,20 @@ export default function CounterPage() {
       {/* Memo & Reset */}
       <div className="space-y-4">
         <div className="relative">
-          <div className="absolute top-3 left-3 text-slate-400">
-            <FileText className="w-5 h-5" />
+          <div className="absolute top-3.5 left-3.5 text-slate-400">
+            <FileText className="w-4 h-4" />
           </div>
           <textarea
             value={memo}
             onChange={(e) => updateMemo(date, type, session, e.target.value)}
             placeholder="특이사항 (단체명, 장비 이슈 등)..."
-            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 min-h-[80px] resize-none shadow-sm"
+            className="w-full bg-white border border-slate-200 rounded-2xl pl-10 pr-4 py-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 min-h-[80px] resize-none shadow-sm transition-all"
           />
         </div>
 
         <button
           onClick={handleReset}
-          className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors text-sm font-medium border border-rose-100"
+          className="w-full flex items-center justify-center space-x-2 py-3.5 rounded-2xl text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors text-sm font-bold border border-rose-100/50 shadow-sm"
         >
           <RotateCcw className="w-4 h-4" />
           <span>현재 세션 초기화</span>
@@ -264,18 +326,25 @@ export default function CounterPage() {
               </div>
               
               <div className="p-4 space-y-4">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-4">
                   {CATEGORIES.map(cat => (
-                    <div key={cat.id} className="flex flex-col">
-                      <label className="text-xs font-medium text-slate-500 mb-1">{cat.label}</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={groupCounts[cat.id] || ''}
-                        onChange={(e) => setGroupCounts(prev => ({ ...prev, [cat.id]: parseInt(e.target.value) || 0 }))}
-                        className="border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-500"
-                        placeholder="0"
-                      />
+                    <div key={cat.id} className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700">{cat.label}</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {cat.fields.map(field => (
+                          <div key={field.id} className="flex flex-col">
+                            <label className="text-[10px] font-medium text-slate-500 mb-1">{field.label}</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={groupCounts[field.id] || ''}
+                              onChange={(e) => setGroupCounts(prev => ({ ...prev, [field.id]: parseInt(e.target.value) || 0 }))}
+                              className="border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-500 text-sm"
+                              placeholder="0"
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ))}
                 </div>

@@ -7,10 +7,14 @@ import { handleFirestoreError, OperationType } from '@/lib/firestoreUtils';
 export type RecordType = 'autonomous' | 'reserved';
 
 export interface Counts {
-  adult: number;
-  youth: number;
-  child: number;
-  infant: number;
+  adult_m: number;
+  adult_f: number;
+  youth_m: number;
+  youth_f: number;
+  child_m: number;
+  child_f: number;
+  infant_m: number;
+  infant_f: number;
 }
 
 export interface VisitorRecord {
@@ -41,7 +45,12 @@ const createDefaultRecord = (date: string, type: RecordType, session: string): V
   date,
   type,
   session,
-  counts: { adult: 0, youth: 0, child: 0, infant: 0 },
+  counts: { 
+    adult_m: 0, adult_f: 0, 
+    youth_m: 0, youth_f: 0, 
+    child_m: 0, child_f: 0, 
+    infant_m: 0, infant_f: 0 
+  },
   memo: '',
   updatedAt: Date.now(),
 });
@@ -130,10 +139,14 @@ export const useStore = create<AppState>((set, get) => ({
       const newRecord = {
         ...current,
         counts: {
-          adult: current.counts.adult + countsToAdd.adult,
-          youth: current.counts.youth + countsToAdd.youth,
-          child: current.counts.child + countsToAdd.child,
-          infant: current.counts.infant + countsToAdd.infant,
+          adult_m: current.counts.adult_m + countsToAdd.adult_m,
+          adult_f: current.counts.adult_f + countsToAdd.adult_f,
+          youth_m: current.counts.youth_m + countsToAdd.youth_m,
+          youth_f: current.counts.youth_f + countsToAdd.youth_f,
+          child_m: current.counts.child_m + countsToAdd.child_m,
+          child_f: current.counts.child_f + countsToAdd.child_f,
+          infant_m: current.counts.infant_m + countsToAdd.infant_m,
+          infant_f: current.counts.infant_f + countsToAdd.infant_f,
         },
         memo: newMemo,
         updatedAt: Date.now()
@@ -155,10 +168,14 @@ export const useStore = create<AppState>((set, get) => ({
         await setDoc(doc(db, 'records', id), newDoc);
       } else {
         const updates: any = { updatedAt: Date.now() };
-        if (countsToAdd.adult > 0) updates['counts.adult'] = increment(countsToAdd.adult);
-        if (countsToAdd.youth > 0) updates['counts.youth'] = increment(countsToAdd.youth);
-        if (countsToAdd.child > 0) updates['counts.child'] = increment(countsToAdd.child);
-        if (countsToAdd.infant > 0) updates['counts.infant'] = increment(countsToAdd.infant);
+        if (countsToAdd.adult_m > 0) updates['counts.adult_m'] = increment(countsToAdd.adult_m);
+        if (countsToAdd.adult_f > 0) updates['counts.adult_f'] = increment(countsToAdd.adult_f);
+        if (countsToAdd.youth_m > 0) updates['counts.youth_m'] = increment(countsToAdd.youth_m);
+        if (countsToAdd.youth_f > 0) updates['counts.youth_f'] = increment(countsToAdd.youth_f);
+        if (countsToAdd.child_m > 0) updates['counts.child_m'] = increment(countsToAdd.child_m);
+        if (countsToAdd.child_f > 0) updates['counts.child_f'] = increment(countsToAdd.child_f);
+        if (countsToAdd.infant_m > 0) updates['counts.infant_m'] = increment(countsToAdd.infant_m);
+        if (countsToAdd.infant_f > 0) updates['counts.infant_f'] = increment(countsToAdd.infant_f);
         
         if (memoToAdd) {
           updates['memo'] = existing.memo ? `${existing.memo}\n${memoToAdd}` : memoToAdd;
@@ -178,7 +195,12 @@ export const useStore = create<AppState>((set, get) => ({
 
     const newRecord = {
       ...existing,
-      counts: { adult: 0, youth: 0, child: 0, infant: 0 },
+      counts: { 
+        adult_m: 0, adult_f: 0, 
+        youth_m: 0, youth_f: 0, 
+        child_m: 0, child_f: 0, 
+        infant_m: 0, infant_f: 0 
+      },
       updatedAt: Date.now()
     };
 

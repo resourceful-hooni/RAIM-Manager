@@ -1,51 +1,162 @@
 import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { useStore } from '@/store/useStore';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
-import { Users, Calendar, TrendingUp, AlertCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { Users, Calendar, TrendingUp, AlertCircle, Download, CheckSquare, Square, BarChart2 } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import { saveAs } from 'file-saver';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#f43f5e'];
 const PIE_COLORS = ['#8b5cf6', '#0ea5e9'];
 
 export default function DashboardPage() {
+  const [viewMode, setViewMode] = useState<'daily' | 'monthly' | 'yearly'>('daily');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [visibleSeries, setVisibleSeries] = useState({
+    남: true, 여: true,
+    성인: true, 청소년: true, 어린이: true, 유아: true,
+    자율관람: true, 예약관람: true
+  });
   const { getAllRecords } = useStore();
+
+  const toggleSeries = (key: keyof typeof visibleSeries) => {
+    setVisibleSeries(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleDownloadChart = async (chartId: string, filename: string) => {
+    const chartElement = document.getElementById(chartId);
+    if (chartElement) {
+      const canvas = await html2canvas(chartElement, { backgroundColor: '#ffffff', scale: 2 });
+      canvas.toBlob((blob) => {
+        if (blob) {
+          saveAs(blob, `${filename}.png`);
+        }
+      });
+    }
+  };
 
   const allRecords = getAllRecords();
 
-  const dailyRecords = useMemo(() => {
-    return allRecords.filter(r => r.date === date);
-  }, [date, allRecords]);
+  const filteredRecords = useMemo(() => {
+    if (viewMode === 'daily') {
+      return allRecords.filter(r => r.date === date);
+    } else if (viewMode === 'monthly') {
+      const month = date.substring(0, 7); // YYYY-MM
+      return allRecords.filter(r => r.date.startsWith(month));
+    } else {
+      const year = date.substring(0, 4); // YYYY
+      return allRecords.filter(r => r.date.startsWith(year));
+    }
+  }, [date, allRecords, viewMode]);
 
   const stats = useMemo(() => {
     let total = 0;
     let autonomous = 0;
     let reserved = 0;
 
-    dailyRecords.forEach(r => {
-      const sum = r.counts.adult + r.counts.youth + r.counts.child + r.counts.infant;
+    filteredRecords.forEach(r => {
+      const sum = (Object.values(r.counts) as number[]).reduce((a, b) => a + b, 0);
       total += sum;
       if (r.type === 'autonomous') autonomous += sum;
       else reserved += sum;
     });
 
     return { total, autonomous, reserved };
-  }, [dailyRecords]);
+  }, [filteredRecords]);
 
   const chartData = useMemo(() => {
-    const data: any[] = [];
-    dailyRecords.forEach(r => {
-      data.push({
-        name: r.session.split(' ')[0],
-        성인: r.counts.adult,
-        청소년: r.counts.youth,
-        어린이: r.counts.child,
-        유아: r.counts.infant,
-        type: r.type
+    if (viewMode === 'daily') {
+      const hourlyMap: Record<string, any> = {};
+      for (let i = 10; i <= 17; i++) {
+        hourlyMap[`${i}시`] = { name: `${i}시`, 성인: 0, 청소년: 0, 어린이: 0, 유아: 0, 남: 0, 여: 0, 자율관람: 0, 예약관람: 0 };
+      }
+      filteredRecords.forEach(r => {
+        let hourStr = '10시';
+        if (r.session.includes('시')) {
+          hourStr = r.session;
+        } else {
+          const match = r.session.match(/\((\d{2}):/);
+          if (match) {
+            hourStr = `${parseInt(match[1])}시`;
+          }
+        }
+        
+        if (!hourlyMap[hourStr]) {
+          hourlyMap[hourStr] = { name: hourStr, 성인: 0, 청소년: 0, 어린이: 0, 유아: 0, 남: 0, 여: 0, 자율관람: 0, 예약관람: 0 };
+        }
+        
+        const safeCounts = {
+          adult_m: r.counts.adult_m || 0, adult_f: r.counts.adult_f || 0,
+          youth_m: r.counts.youth_m || 0, youth_f: r.counts.youth_f || 0,
+          child_m: r.counts.child_m || 0, child_f: r.counts.child_f || 0,
+          infant_m: r.counts.infant_m || 0, infant_f: r.counts.infant_f || 0,
+        };
+        const total = (Object.values(safeCounts) as number[]).reduce((a, b) => a + b, 0);
+        
+        hourlyMap[hourStr].성인 += safeCounts.adult_m + safeCounts.adult_f;
+        hourlyMap[hourStr].청소년 += safeCounts.youth_m + safeCounts.youth_f;
+        hourlyMap[hourStr].어린이 += safeCounts.child_m + safeCounts.child_f;
+        hourlyMap[hourStr].유아 += safeCounts.infant_m + safeCounts.infant_f;
+        hourlyMap[hourStr].남 += safeCounts.adult_m + safeCounts.youth_m + safeCounts.child_m + safeCounts.infant_m;
+        hourlyMap[hourStr].여 += safeCounts.adult_f + safeCounts.youth_f + safeCounts.child_f + safeCounts.infant_f;
+        
+        if (r.type === 'autonomous') hourlyMap[hourStr].자율관람 += total;
+        else hourlyMap[hourStr].예약관람 += total;
       });
-    });
-    return data.sort((a, b) => a.name.localeCompare(b.name));
-  }, [dailyRecords]);
+      return Object.values(hourlyMap).sort((a, b) => parseInt(a.name) - parseInt(b.name));
+    } else if (viewMode === 'monthly') {
+      // Group by day
+      const dailyMap: Record<string, any> = {};
+      filteredRecords.forEach(r => {
+        const day = r.date.split('-')[2];
+        if (!dailyMap[day]) {
+          dailyMap[day] = { name: `${day}일`, 성인: 0, 청소년: 0, 어린이: 0, 유아: 0, 남: 0, 여: 0, 자율관람: 0, 예약관람: 0 };
+        }
+        const safeCounts = {
+          adult_m: r.counts.adult_m || 0, adult_f: r.counts.adult_f || 0,
+          youth_m: r.counts.youth_m || 0, youth_f: r.counts.youth_f || 0,
+          child_m: r.counts.child_m || 0, child_f: r.counts.child_f || 0,
+          infant_m: r.counts.infant_m || 0, infant_f: r.counts.infant_f || 0,
+        };
+        const total = (Object.values(safeCounts) as number[]).reduce((a, b) => a + b, 0);
+        dailyMap[day].성인 += safeCounts.adult_m + safeCounts.adult_f;
+        dailyMap[day].청소년 += safeCounts.youth_m + safeCounts.youth_f;
+        dailyMap[day].어린이 += safeCounts.child_m + safeCounts.child_f;
+        dailyMap[day].유아 += safeCounts.infant_m + safeCounts.infant_f;
+        dailyMap[day].남 += safeCounts.adult_m + safeCounts.youth_m + safeCounts.child_m + safeCounts.infant_m;
+        dailyMap[day].여 += safeCounts.adult_f + safeCounts.youth_f + safeCounts.child_f + safeCounts.infant_f;
+        if (r.type === 'autonomous') dailyMap[day].자율관람 += total;
+        else dailyMap[day].예약관람 += total;
+      });
+      return Object.values(dailyMap).sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      // Group by month
+      const monthlyMap: Record<string, any> = {};
+      filteredRecords.forEach(r => {
+        const month = r.date.split('-')[1];
+        if (!monthlyMap[month]) {
+          monthlyMap[month] = { name: `${parseInt(month)}월`, 성인: 0, 청소년: 0, 어린이: 0, 유아: 0, 남: 0, 여: 0, 자율관람: 0, 예약관람: 0 };
+        }
+        const safeCounts = {
+          adult_m: r.counts.adult_m || 0, adult_f: r.counts.adult_f || 0,
+          youth_m: r.counts.youth_m || 0, youth_f: r.counts.youth_f || 0,
+          child_m: r.counts.child_m || 0, child_f: r.counts.child_f || 0,
+          infant_m: r.counts.infant_m || 0, infant_f: r.counts.infant_f || 0,
+        };
+        const total = (Object.values(safeCounts) as number[]).reduce((a, b) => a + b, 0);
+        monthlyMap[month].성인 += safeCounts.adult_m + safeCounts.adult_f;
+        monthlyMap[month].청소년 += safeCounts.youth_m + safeCounts.youth_f;
+        monthlyMap[month].어린이 += safeCounts.child_m + safeCounts.child_f;
+        monthlyMap[month].유아 += safeCounts.infant_m + safeCounts.infant_f;
+        monthlyMap[month].남 += safeCounts.adult_m + safeCounts.youth_m + safeCounts.child_m + safeCounts.infant_m;
+        monthlyMap[month].여 += safeCounts.adult_f + safeCounts.youth_f + safeCounts.child_f + safeCounts.infant_f;
+        if (r.type === 'autonomous') monthlyMap[month].자율관람 += total;
+        else monthlyMap[month].예약관람 += total;
+      });
+      return Object.values(monthlyMap).sort((a, b) => parseInt(a.name) - parseInt(b.name));
+    }
+  }, [filteredRecords, viewMode]);
 
   const pieData = [
     { name: '자율관람', value: stats.autonomous },
@@ -60,7 +171,7 @@ export default function DashboardPage() {
     const sessionStats: Record<string, { total: number, count: number }> = {};
     
     allRecords.forEach(r => {
-      const sum = r.counts.adult + r.counts.youth + r.counts.child + r.counts.infant;
+      const sum = (Object.values(r.counts) as number[]).reduce((a, b) => a + b, 0);
       if (!sessionStats[r.session]) {
         sessionStats[r.session] = { total: 0, count: 0 };
       }
@@ -109,35 +220,60 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="flex items-center space-x-2 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
-        <Calendar className="w-5 h-5 text-slate-400 ml-2" />
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="bg-transparent border-none px-2 py-1 text-slate-900 focus:outline-none flex-1"
-        />
+      <div className="flex flex-col space-y-4">
+        <div className="flex bg-slate-50 rounded-xl p-1.5 border border-slate-100">
+          {(['daily', 'monthly', 'yearly'] as const).map((mode) => (
+            <button
+              key={mode}
+              className={cn(
+                "flex-1 py-2 text-sm font-bold rounded-lg transition-all",
+                viewMode === mode ? "bg-white text-blue-600 shadow-sm border border-slate-200/60" : "text-slate-500 hover:text-slate-700"
+              )}
+              onClick={() => setViewMode(mode)}
+            >
+              {mode === 'daily' ? '일별' : mode === 'monthly' ? '월별' : '연간'}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center space-x-2 bg-white p-2 rounded-2xl border border-slate-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
+          <Calendar className="w-5 h-5 text-blue-500 ml-3" />
+          <input
+            type={viewMode === 'daily' ? 'date' : viewMode === 'monthly' ? 'month' : 'number'}
+            value={viewMode === 'yearly' ? date.substring(0, 4) : viewMode === 'monthly' ? date.substring(0, 7) : date}
+            onChange={(e) => {
+              if (viewMode === 'yearly') setDate(`${e.target.value}-01-01`);
+              else if (viewMode === 'monthly') setDate(`${e.target.value}-01`);
+              else setDate(e.target.value);
+            }}
+            min={viewMode === 'yearly' ? "2024" : undefined}
+            max={viewMode === 'yearly' ? "2030" : undefined}
+            className="bg-transparent border-none px-2 py-2 text-slate-900 focus:outline-none flex-1 text-sm font-bold"
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-5 flex flex-col justify-center">
-          <div className="flex items-center space-x-2 text-slate-500 mb-2">
-            <Users className="w-4 h-4" />
-            <span className="text-sm font-medium">총 방문객</span>
+        <div className="bg-white border border-slate-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)] rounded-3xl p-6 flex flex-col justify-center relative overflow-hidden group">
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-blue-500 opacity-90 transition-all group-hover:h-2" />
+          <div className="flex items-center space-x-2 text-slate-500 mb-3 mt-1">
+            <Users className="w-5 h-5 text-blue-500" />
+            <span className="text-sm font-bold">총 방문객</span>
           </div>
-          <span className="text-4xl font-bold text-slate-900 tracking-tight">{stats.total} <span className="text-lg text-slate-500 font-normal">명</span></span>
+          <span className="text-5xl font-black text-slate-900 tracking-tighter">{stats.total} <span className="text-xl text-slate-400 font-bold tracking-normal">명</span></span>
         </div>
         
-        <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-4 flex items-center justify-center">
-          <div className="h-24 w-full">
+        <div className="bg-white border border-slate-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)] rounded-3xl p-5 flex items-center justify-center relative overflow-hidden group">
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-indigo-500 opacity-90 transition-all group-hover:h-2" />
+          <div className="h-28 w-full mt-2">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={pieData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={25}
-                  outerRadius={40}
+                  innerRadius={30}
+                  outerRadius={45}
                   paddingAngle={5}
                   dataKey="value"
                   stroke="none"
@@ -147,48 +283,91 @@ export default function DashboardPage() {
                   ))}
                 </Pie>
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', color: '#0f172a' }}
-                  itemStyle={{ color: '#0f172a' }}
+                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#f1f5f9', borderRadius: '12px', color: '#0f172a', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                  itemStyle={{ color: '#0f172a', fontWeight: 'bold' }}
                 />
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex flex-col space-y-1 text-xs">
-            <div className="flex items-center space-x-1">
-              <div className="w-2 h-2 rounded-full bg-[#8b5cf6]" />
+          <div className="flex flex-col space-y-2 text-xs font-bold mt-2">
+            <div className="flex items-center space-x-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-[#8b5cf6] shadow-sm" />
               <span className="text-slate-600">자율 {stats.autonomous}</span>
             </div>
-            <div className="flex items-center space-x-1">
-              <div className="w-2 h-2 rounded-full bg-[#0ea5e9]" />
+            <div className="flex items-center space-x-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-[#0ea5e9] shadow-sm" />
               <span className="text-slate-600">예약 {stats.reserved}</span>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-4">
-        <h3 className="text-sm font-medium text-slate-700 mb-4">세션별 방문객 추이</h3>
-        <div className="h-64 w-full">
+      <div className="bg-white border border-slate-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)] rounded-3xl p-6 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-1.5 h-full bg-slate-300 opacity-80" />
+        <div className="flex justify-between items-center mb-5 pl-2">
+          <h3 className="text-sm font-extrabold text-slate-800 tracking-tight">
+            {viewMode === 'daily' ? '시간대별' : viewMode === 'monthly' ? '일별' : '월별'} 종합 방문객 추이
+          </h3>
+          <button 
+            onClick={() => handleDownloadChart('comprehensive-chart', `${date.replace(/-/g, '')}_방문객추이`)}
+            className="text-slate-400 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 p-2 rounded-xl transition-all border border-slate-100 shadow-sm active:scale-95"
+            title="그래프 다운로드 (PNG)"
+          >
+            <Download className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-6 pl-2">
+          {(Object.keys(visibleSeries) as Array<keyof typeof visibleSeries>).map(key => (
+            <button
+              key={key}
+              onClick={() => toggleSeries(key)}
+              className={cn(
+                "flex items-center space-x-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-all font-bold",
+                visibleSeries[key] 
+                  ? "bg-slate-800 border-slate-800 text-white shadow-sm" 
+                  : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50"
+              )}
+            >
+              {visibleSeries[key] ? <CheckSquare className="w-3.5 h-3.5 opacity-70" /> : <Square className="w-3.5 h-3.5" />}
+              <span>{key}</span>
+            </button>
+          ))}
+        </div>
+
+        <div id="comprehensive-chart" className="h-[320px] w-full bg-white p-2 rounded-xl">
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
-                <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
+              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
+                <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
                 <Tooltip 
-                  cursor={{ fill: '#f1f5f9', opacity: 0.4 }}
-                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', color: '#0f172a' }}
+                  cursor={{ fill: '#f8fafc', opacity: 0.8 }}
+                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#f1f5f9', borderRadius: '12px', color: '#0f172a', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                  itemStyle={{ color: '#0f172a', fontWeight: 'bold' }}
                 />
-                <Legend wrapperStyle={{ fontSize: '10px' }} />
-                <Bar dataKey="성인" stackId="a" fill={COLORS[0]} radius={[0, 0, 4, 4]} />
-                <Bar dataKey="청소년" stackId="a" fill={COLORS[1]} />
-                <Bar dataKey="어린이" stackId="a" fill={COLORS[2]} />
-                <Bar dataKey="유아" stackId="a" fill={COLORS[3]} radius={[4, 4, 0, 0]} />
+                <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingTop: '10px' }} />
+                
+                {/* Gender */}
+                {visibleSeries.남 && <Bar dataKey="남" stackId="gender" fill="#3b82f6" radius={[0, 0, 4, 4]} />}
+                {visibleSeries.여 && <Bar dataKey="여" stackId="gender" fill="#f43f5e" radius={[4, 4, 0, 0]} />}
+                
+                {/* Age */}
+                {visibleSeries.성인 && <Bar dataKey="성인" stackId="age" fill={COLORS[0]} radius={[0, 0, 4, 4]} />}
+                {visibleSeries.청소년 && <Bar dataKey="청소년" stackId="age" fill={COLORS[1]} />}
+                {visibleSeries.어린이 && <Bar dataKey="어린이" stackId="age" fill={COLORS[2]} />}
+                {visibleSeries.유아 && <Bar dataKey="유아" stackId="age" fill={COLORS[3]} radius={[4, 4, 0, 0]} />}
+
+                {/* Type */}
+                {visibleSeries.자율관람 && <Bar dataKey="자율관람" stackId="type" fill="#8b5cf6" radius={[0, 0, 4, 4]} />}
+                {visibleSeries.예약관람 && <Bar dataKey="예약관람" stackId="type" fill="#0ea5e9" radius={[4, 4, 0, 0]} />}
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-full flex items-center justify-center text-slate-400 text-sm">
-              데이터가 없습니다.
+            <div className="h-full flex flex-col items-center justify-center text-slate-400 text-sm bg-slate-50 rounded-xl border border-slate-100 border-dashed">
+              <BarChart2 className="w-8 h-8 mb-2 text-slate-300" />
+              <span className="font-bold">데이터가 없습니다.</span>
             </div>
           )}
         </div>

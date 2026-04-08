@@ -33,11 +33,15 @@ service cloud.firestore {
 
     function isValidCounts(counts) {
       return counts is map &&
-             counts.keys().hasAll(['adult', 'youth', 'child', 'infant']) &&
-             counts.adult is number && counts.adult >= 0 &&
-             counts.youth is number && counts.youth >= 0 &&
-             counts.child is number && counts.child >= 0 &&
-             counts.infant is number && counts.infant >= 0;
+             counts.keys().hasAll(['adult_m', 'adult_f', 'youth_m', 'youth_f', 'child_m', 'child_f', 'infant_m', 'infant_f']) &&
+             counts.adult_m is number && counts.adult_m >= 0 &&
+             counts.adult_f is number && counts.adult_f >= 0 &&
+             counts.youth_m is number && counts.youth_m >= 0 &&
+             counts.youth_f is number && counts.youth_f >= 0 &&
+             counts.child_m is number && counts.child_m >= 0 &&
+             counts.child_f is number && counts.child_f >= 0 &&
+             counts.infant_m is number && counts.infant_m >= 0 &&
+             counts.infant_f is number && counts.infant_f >= 0;
     }
 
     function isValidRecord(data) {

@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useStore } from '@/store/useStore';
-import { Download, Cloud, Info, Calendar } from 'lucide-react';
+import { Download, Cloud, Info, Calendar, FileSpreadsheet } from 'lucide-react';
 import { format } from 'date-fns';
+import { exportToXLSX } from '@/lib/exportUtils';
 
 export default function SettingsPage() {
   const { getAllRecords } = useStore();
   const [exportDate, setExportDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
-  const handleExportCSV = () => {
+  const handleExportXLSX = () => {
     const allRecords = getAllRecords();
     const records = allRecords.filter(r => r.date === exportDate);
     
@@ -16,101 +17,78 @@ export default function SettingsPage() {
       return;
     }
 
-    const headers = ['날짜', '유형', '시간/회차', '성인', '청소년', '어린이', '유아', '총계', '메모'];
-    const csvRows = [headers.join(',')];
-
-    records.forEach(r => {
-      const total = r.counts.adult + r.counts.youth + r.counts.child + r.counts.infant;
-      const typeLabel = r.type === 'autonomous' ? '자율관람' : '예약관람';
-      const memo = `"${r.memo.replace(/"/g, '""')}"`; // Escape quotes
-      
-      const row = [
-        r.date,
-        typeLabel,
-        r.session,
-        r.counts.adult,
-        r.counts.youth,
-        r.counts.child,
-        r.counts.infant,
-        total,
-        memo
-      ];
-      csvRows.push(row.join(','));
-    });
-
-    const csvString = csvRows.join('\n');
-    const blob = new Blob(['\uFEFF' + csvString], { type: 'text/csv;charset=utf-8;' }); // BOM for Excel
-    const url = URL.createObjectURL(blob);
-    
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `RAIM_Visitor_Data_${exportDate.replace(/-/g, '')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    exportToXLSX(exportDate, allRecords);
   };
 
   return (
-    <div className="p-4 space-y-6 max-w-2xl mx-auto">
-      <h2 className="text-lg font-semibold mb-4 text-slate-900">설정 (Settings)</h2>
+    <div className="p-4 space-y-4 max-w-2xl mx-auto">
+      <h2 className="text-xl font-extrabold mb-6 text-slate-900 tracking-tight ml-1">설정 (Settings)</h2>
 
       <div className="space-y-4">
-        <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-4">
-          <h3 className="text-sm font-medium text-slate-800 mb-3 flex items-center">
-            <Download className="w-4 h-4 mr-2" />
-            데이터 내보내기 (CSV)
+        <div className="bg-white border border-slate-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)] rounded-3xl p-6 relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-500 opacity-80" />
+          <h3 className="text-sm font-extrabold text-slate-800 mb-2 flex items-center tracking-tight">
+            <FileSpreadsheet className="w-5 h-5 mr-2 text-emerald-500" />
+            데이터 내보내기 (XLSX)
           </h3>
-          <p className="text-xs text-slate-500 mb-4">
-            선택한 날짜의 방문객 데이터를 CSV 파일로 다운로드하여 엑셀에서 확인할 수 있습니다.
+          <p className="text-xs font-medium text-slate-500 mb-5 leading-relaxed">
+            선택한 날짜의 방문객 데이터를 엑셀(XLSX) 파일로 다운로드합니다.
           </p>
           
-          <div className="flex space-x-2 mb-4">
-            <div className="flex-1 flex items-center space-x-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
-              <Calendar className="w-4 h-4 text-slate-400" />
+          <div className="flex space-x-2 mb-5">
+            <div className="flex-1 flex items-center space-x-3 bg-slate-50 border border-slate-200/60 rounded-2xl px-4 py-3 shadow-inner">
+              <Calendar className="w-5 h-5 text-slate-400" />
               <input
                 type="date"
                 value={exportDate}
                 onChange={(e) => setExportDate(e.target.value)}
-                className="bg-transparent border-none text-sm text-slate-900 focus:outline-none w-full"
+                className="bg-transparent border-none text-sm font-bold text-slate-900 focus:outline-none w-full"
               />
             </div>
           </div>
 
           <button
-            onClick={handleExportCSV}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl text-sm font-medium transition-colors"
+            onClick={handleExportXLSX}
+            className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white py-3.5 rounded-2xl text-sm font-bold transition-all shadow-md hover:shadow-lg active:scale-[0.98] flex items-center justify-center space-x-2"
           >
-            {exportDate} 데이터 다운로드
+            <Download className="w-4 h-4" />
+            <span>{exportDate} 엑셀 다운로드</span>
           </button>
         </div>
 
-        <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-4">
-          <h3 className="text-sm font-medium text-slate-800 mb-3 flex items-center">
-            <Cloud className="w-4 h-4 mr-2" />
+        <div className="bg-white border border-slate-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)] rounded-3xl p-6 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500 opacity-80" />
+          <h3 className="text-sm font-extrabold text-slate-800 mb-4 flex items-center tracking-tight">
+            <Cloud className="w-5 h-5 mr-2 text-blue-500" />
             동기화 상태
           </h3>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-500">서버 연결 상태</span>
-            <span className="text-emerald-600 font-medium">온라인 (자동 동기화 중)</span>
+          <div className="flex items-center justify-between text-sm bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+            <span className="text-slate-600 font-bold">서버 연결 상태</span>
+            <div className="flex items-center space-x-2 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+              <span className="text-emerald-700 font-bold text-xs">온라인 (자동 동기화 중)</span>
+            </div>
           </div>
-          <p className="text-xs text-slate-400 mt-2">
+          <p className="text-[11px] font-medium text-slate-400 mt-4 leading-relaxed px-1">
             오프라인 상태에서는 기기에 안전하게 임시 저장되며, 네트워크 연결 시 자동으로 서버와 동기화됩니다.
           </p>
         </div>
 
-        <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-4">
-          <h3 className="text-sm font-medium text-slate-800 mb-3 flex items-center">
-            <Info className="w-4 h-4 mr-2" />
+        <div className="bg-white border border-slate-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)] rounded-3xl p-6 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1.5 h-full bg-slate-300 opacity-80" />
+          <h3 className="text-sm font-extrabold text-slate-800 mb-4 flex items-center tracking-tight">
+            <Info className="w-5 h-5 mr-2 text-slate-400" />
             앱 정보
           </h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-slate-500">버전</span>
-              <span className="text-slate-700">1.0.0</span>
+          <div className="space-y-3 text-sm bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <div className="flex justify-between items-center">
+              <span className="text-slate-500 font-bold">버전</span>
+              <span className="text-slate-900 font-black bg-white px-2 py-1 rounded-lg border border-slate-200/60 shadow-sm text-xs">1.0.0</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">개발</span>
-              <span className="text-slate-700">RAIM</span>
+            <div className="h-px bg-slate-200/60 w-full" />
+            <div className="flex justify-between items-center">
+              <span className="text-slate-500 font-bold">개발</span>
+              <span className="text-slate-900 font-black">김지훈</span>
             </div>
           </div>
         </div>
