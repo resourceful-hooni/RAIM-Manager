@@ -15,12 +15,12 @@ export default function DashboardPage() {
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [visibleSeries, setVisibleSeries] = useState({
     '성인': true, '청소년': true, '어린이': true, '유아': true,
-    '남성': false, '여성': false,
-    '성인(남)': false, '성인(여)': false,
-    '청소년(남)': false, '청소년(여)': false,
-    '어린이(남)': false, '어린이(여)': false,
-    '유아(남)': false, '유아(여)': false,
-    '자율관람': false, '예약관람': false
+    '남성': true, '여성': true,
+    '성인(남)': true, '성인(여)': true,
+    '청소년(남)': true, '청소년(여)': true,
+    '어린이(남)': true, '어린이(여)': true,
+    '유아(남)': true, '유아(여)': true,
+    '자율관람': true, '예약관람': true
   });
   const { getAllRecords } = useStore();
 
@@ -501,6 +501,7 @@ export default function DashboardPage() {
                   <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
                   <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
                   <Tooltip 
+                    shared={false}
                     cursor={{ fill: '#f8fafc', opacity: 0.8 }}
                     contentStyle={{ backgroundColor: '#ffffff', borderColor: '#f1f5f9', borderRadius: '12px', color: '#0f172a', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
                     itemStyle={{ color: '#0f172a', fontWeight: 'bold' }}
@@ -514,14 +515,14 @@ export default function DashboardPage() {
                   {visibleSeries['남성'] && <Bar dataKey="남성" stackId="gender" fill="#8b5cf6" />}
                   {visibleSeries['여성'] && <Bar dataKey="여성" stackId="gender" fill="#0ea5e9" />}
 
-                  {visibleSeries['성인(남)'] && <Bar dataKey="성인(남)" stackId="age_gender" fill="#2563eb" />}
-                  {visibleSeries['성인(여)'] && <Bar dataKey="성인(여)" stackId="age_gender" fill="#3b82f6" />}
-                  {visibleSeries['청소년(남)'] && <Bar dataKey="청소년(남)" stackId="age_gender" fill="#059669" />}
-                  {visibleSeries['청소년(여)'] && <Bar dataKey="청소년(여)" stackId="age_gender" fill="#10b981" />}
-                  {visibleSeries['어린이(남)'] && <Bar dataKey="어린이(남)" stackId="age_gender" fill="#d97706" />}
-                  {visibleSeries['어린이(여)'] && <Bar dataKey="어린이(여)" stackId="age_gender" fill="#f59e0b" />}
-                  {visibleSeries['유아(남)'] && <Bar dataKey="유아(남)" stackId="age_gender" fill="#e11d48" />}
-                  {visibleSeries['유아(여)'] && <Bar dataKey="유아(여)" stackId="age_gender" fill="#f43f5e" />}
+                  {visibleSeries['성인(남)'] && <Bar dataKey="성인(남)" stackId="age_gender" fill="#1e3a8a" />}
+                  {visibleSeries['성인(여)'] && <Bar dataKey="성인(여)" stackId="age_gender" fill="#60a5fa" />}
+                  {visibleSeries['청소년(남)'] && <Bar dataKey="청소년(남)" stackId="age_gender" fill="#064e3b" />}
+                  {visibleSeries['청소년(여)'] && <Bar dataKey="청소년(여)" stackId="age_gender" fill="#34d399" />}
+                  {visibleSeries['어린이(남)'] && <Bar dataKey="어린이(남)" stackId="age_gender" fill="#78350f" />}
+                  {visibleSeries['어린이(여)'] && <Bar dataKey="어린이(여)" stackId="age_gender" fill="#fbbf24" />}
+                  {visibleSeries['유아(남)'] && <Bar dataKey="유아(남)" stackId="age_gender" fill="#881337" />}
+                  {visibleSeries['유아(여)'] && <Bar dataKey="유아(여)" stackId="age_gender" fill="#fb7185" />}
 
                   {visibleSeries.자율관람 && <Bar dataKey="자율관람" stackId="type" fill="#64748b" />}
                   {visibleSeries.예약관람 && <Bar dataKey="예약관람" stackId="type" fill="#cbd5e1" />}
@@ -532,6 +533,7 @@ export default function DashboardPage() {
                   <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
                   <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
                   <Tooltip 
+                    shared={false}
                     contentStyle={{ backgroundColor: '#ffffff', borderColor: '#f1f5f9', borderRadius: '12px', color: '#0f172a', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
                     itemStyle={{ color: '#0f172a', fontWeight: 'bold' }}
                   />
@@ -544,14 +546,14 @@ export default function DashboardPage() {
                   {visibleSeries['남성'] && <Line type="monotone" dataKey="남성" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />}
                   {visibleSeries['여성'] && <Line type="monotone" dataKey="여성" stroke="#0ea5e9" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />}
 
-                  {visibleSeries['성인(남)'] && <Line type="monotone" dataKey="성인(남)" stroke="#2563eb" strokeWidth={2} dot={{ r: 3 }} />}
-                  {visibleSeries['성인(여)'] && <Line type="monotone" dataKey="성인(여)" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />}
-                  {visibleSeries['청소년(남)'] && <Line type="monotone" dataKey="청소년(남)" stroke="#059669" strokeWidth={2} dot={{ r: 3 }} />}
-                  {visibleSeries['청소년(여)'] && <Line type="monotone" dataKey="청소년(여)" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />}
-                  {visibleSeries['어린이(남)'] && <Line type="monotone" dataKey="어린이(남)" stroke="#d97706" strokeWidth={2} dot={{ r: 3 }} />}
-                  {visibleSeries['어린이(여)'] && <Line type="monotone" dataKey="어린이(여)" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />}
-                  {visibleSeries['유아(남)'] && <Line type="monotone" dataKey="유아(남)" stroke="#e11d48" strokeWidth={2} dot={{ r: 3 }} />}
-                  {visibleSeries['유아(여)'] && <Line type="monotone" dataKey="유아(여)" stroke="#f43f5e" strokeWidth={2} dot={{ r: 3 }} />}
+                  {visibleSeries['성인(남)'] && <Line type="monotone" dataKey="성인(남)" stroke="#1e3a8a" strokeWidth={2} dot={{ r: 3 }} />}
+                  {visibleSeries['성인(여)'] && <Line type="monotone" dataKey="성인(여)" stroke="#60a5fa" strokeWidth={2} dot={{ r: 3 }} />}
+                  {visibleSeries['청소년(남)'] && <Line type="monotone" dataKey="청소년(남)" stroke="#064e3b" strokeWidth={2} dot={{ r: 3 }} />}
+                  {visibleSeries['청소년(여)'] && <Line type="monotone" dataKey="청소년(여)" stroke="#34d399" strokeWidth={2} dot={{ r: 3 }} />}
+                  {visibleSeries['어린이(남)'] && <Line type="monotone" dataKey="어린이(남)" stroke="#78350f" strokeWidth={2} dot={{ r: 3 }} />}
+                  {visibleSeries['어린이(여)'] && <Line type="monotone" dataKey="어린이(여)" stroke="#fbbf24" strokeWidth={2} dot={{ r: 3 }} />}
+                  {visibleSeries['유아(남)'] && <Line type="monotone" dataKey="유아(남)" stroke="#881337" strokeWidth={2} dot={{ r: 3 }} />}
+                  {visibleSeries['유아(여)'] && <Line type="monotone" dataKey="유아(여)" stroke="#fb7185" strokeWidth={2} dot={{ r: 3 }} />}
 
                   {visibleSeries.자율관람 && <Line type="monotone" dataKey="자율관람" stroke="#64748b" strokeWidth={2} strokeDasharray="5 5" />}
                   {visibleSeries.예약관람 && <Line type="monotone" dataKey="예약관람" stroke="#cbd5e1" strokeWidth={2} strokeDasharray="5 5" />}
