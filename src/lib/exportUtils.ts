@@ -1,5 +1,5 @@
-import * as XLSX from 'xlsx-js-style';
-import { VisitorRecord, Counts } from '@/store/useStore';
+import * as XLSX from 'xlsx';
+import { VisitorRecord } from '@/store/useStore';
 
 export const exportToXLSX = (date: string, allRecords: VisitorRecord[]) => {
   const records = allRecords.filter(r => r.date === date);
@@ -9,10 +9,9 @@ export const exportToXLSX = (date: string, allRecords: VisitorRecord[]) => {
   // Prepare data rows
   const data: any[][] = [
     ['서울 로봇AI 과학관 - 무인자동차 연구소 관람객 카운트'],
-    [`날짜:`, `'${date}`],
+    [`날짜:`, date],
     [],
-    ['유형', '회차', '성인', '', '청소년', '', '어린이', '', '유아', '', '성별소계', '', '연령대별 합계', '', '', '', '유형별 총계', '메모'],
-    ['', '', '남', '여', '남', '여', '남', '여', '남', '여', '남', '여', '성인', '청소년', '어린이', '유아', '', '']
+    ['유형', '회차', '성인(남)', '성인(여)', '청소년(남)', '청소년(여)', '어린이(남)', '어린이(여)', '유아(남)', '유아(여)', '남성 소계', '여성 소계', '성인 합계', '청소년 합계', '어린이 합계', '유아 합계', '유형별 총계', '메모']
   ];
 
   const getCountsFor = (type: 'autonomous' | 'reserved', session: string) => {
@@ -60,8 +59,8 @@ export const exportToXLSX = (date: string, allRecords: VisitorRecord[]) => {
       typeTotal += rowTotal;
 
       data.push([
-        idx === 0 ? label : '',
-        s.split(' ')[0],
+        label,
+        s,
         c.adult_m, c.adult_f,
         c.youth_m, c.youth_f,
         c.child_m, c.child_f,
@@ -73,7 +72,6 @@ export const exportToXLSX = (date: string, allRecords: VisitorRecord[]) => {
       ]);
     });
     
-    // Update the first row of the type with the total
     const firstRowIdx = data.length - sessions.length;
     data[firstRowIdx][16] = typeTotal;
     return typeTotal;
@@ -86,7 +84,6 @@ export const exportToXLSX = (date: string, allRecords: VisitorRecord[]) => {
   const grandTotalF = totalAdultF + totalYouthF + totalChildF + totalInfantF;
   const grandTotal = grandTotalM + grandTotalF;
 
-  // Grand Total Row
   data.push([
     '총계', '',
     totalAdultM, totalAdultF,
@@ -103,150 +100,39 @@ export const exportToXLSX = (date: string, allRecords: VisitorRecord[]) => {
   ]);
 
   data.push([]);
-  data.push(['요약 정보', '', '', '', '', '유형별 요약']);
-  data.push(['구분', '남', '여', '합계', '', '유형', '인원', '비율']);
+  data.push(['요약 정보']);
+  data.push(['구분', '남', '여', '합계']);
+  data.push(['성인', totalAdultM, totalAdultF, totalAdultM + totalAdultF]);
+  data.push(['청소년', totalYouthM, totalYouthF, totalYouthM + totalYouthF]);
+  data.push(['어린이', totalChildM, totalChildF, totalChildM + totalChildF]);
+  data.push(['유아', totalInfantM, totalInfantF, totalInfantM + totalInfantF]);
+  data.push(['전체', grandTotalM, grandTotalF, grandTotal]);
   
-  const addSummaryRow = (label: string, m: number, f: number) => {
-    data.push([label, m, f, m + f]);
-  };
-
-  addSummaryRow('성인', totalAdultM, totalAdultF);
-  addSummaryRow('청소년', totalYouthM, totalYouthF);
-  addSummaryRow('어린이', totalChildM, totalChildF);
-  addSummaryRow('유아', totalInfantM, totalInfantF);
-  addSummaryRow('전체', grandTotalM, grandTotalF);
-
-  // Add Type Summary to the same rows
-  const typeSummaryStart = data.length - 5;
-  data[typeSummaryStart][5] = '자유관람';
-  data[typeSummaryStart][6] = totalAuto;
-  data[typeSummaryStart][7] = grandTotal > 0 ? `${((totalAuto / grandTotal) * 100).toFixed(1)}%` : '0.0%';
-
-  data[typeSummaryStart + 1][5] = '예약관람';
-  data[typeSummaryStart + 1][6] = totalReserved;
-  data[typeSummaryStart + 1][7] = grandTotal > 0 ? `${((totalReserved / grandTotal) * 100).toFixed(1)}%` : '0.0%';
-
-  data[typeSummaryStart + 2][5] = '합계';
-  data[typeSummaryStart + 2][6] = grandTotal;
-  data[typeSummaryStart + 2][7] = grandTotal > 0 ? '100.0%' : '0.0%';
+  data.push([]);
+  data.push(['유형별 요약']);
+  data.push(['유형', '인원', '비율']);
+  data.push(['자유관람', totalAuto, grandTotal > 0 ? `${((totalAuto / grandTotal) * 100).toFixed(1)}%` : '0.0%']);
+  data.push(['예약관람', totalReserved, grandTotal > 0 ? `${((totalReserved / grandTotal) * 100).toFixed(1)}%` : '0.0%']);
+  data.push(['합계', grandTotal, '100.0%']);
 
   const ws = XLSX.utils.aoa_to_sheet(data);
-
-  // Styling
-  const borderAll = {
-    top: { style: 'thin', color: { rgb: "000000" } },
-    bottom: { style: 'thin', color: { rgb: "000000" } },
-    left: { style: 'thin', color: { rgb: "000000" } },
-    right: { style: 'thin', color: { rgb: "000000" } }
-  };
-
-  const headerStyle = {
-    font: { bold: true, color: { rgb: "FFFFFF" } },
-    fill: { fgColor: { rgb: "4472C4" } },
-    alignment: { horizontal: "center", vertical: "center" },
-    border: borderAll
-  };
-
-  const dataStyle = {
-    alignment: { horizontal: "center", vertical: "center" },
-    border: borderAll
-  };
-  
-  const totalStyle = {
-    font: { bold: true },
-    fill: { fgColor: { rgb: "FFC000" } },
-    alignment: { horizontal: "center", vertical: "center" },
-    border: borderAll
-  };
-
-  const titleStyle = {
-    font: { bold: true, sz: 16 },
-    alignment: { horizontal: "center", vertical: "center" }
-  };
-
-  // Apply styles
-  for (let R = 0; R < data.length; ++R) {
-    for (let C = 0; C < 18; ++C) {
-      const cellAddress = { c: C, r: R };
-      const cellRef = XLSX.utils.encode_cell(cellAddress);
-      if (!ws[cellRef]) continue;
-
-      if (R === 0) {
-        ws[cellRef].s = titleStyle;
-      } else if (R === 3 || R === 4) {
-        // Headers
-        ws[cellRef].s = headerStyle;
-      } else if (R >= 5 && R <= 5 + autonomousSessions.length + reservedSessions.length - 1) {
-        // Data rows
-        ws[cellRef].s = dataStyle;
-        if (C === 0) {
-          if (R < 5 + autonomousSessions.length) {
-            ws[cellRef].s = { ...dataStyle, fill: { fgColor: { rgb: "DDEBF7" } } }; // Light blue
-          } else {
-            ws[cellRef].s = { ...dataStyle, fill: { fgColor: { rgb: "E2EFDA" } } }; // Light green
-          }
-        }
-      } else if (R === 5 + autonomousSessions.length + reservedSessions.length) {
-        // Grand total
-        ws[cellRef].s = totalStyle;
-      } else if (R >= data.length - 6) {
-        // Summary tables
-        if (R === data.length - 6) {
-           ws[cellRef].s = { font: { bold: true } };
-        } else if (R === data.length - 5) {
-           if (C <= 3 || (C >= 5 && C <= 7)) {
-             ws[cellRef].s = headerStyle;
-           }
-        } else {
-           if (C <= 3 || (C >= 5 && C <= 7)) {
-             ws[cellRef].s = dataStyle;
-           }
-           if (R === data.length - 1) {
-             if (C <= 3 || (C >= 5 && C <= 7)) {
-               ws[cellRef].s = totalStyle;
-             }
-           }
-        }
-      }
-    }
-  }
-
-  // Merges
-  ws['!merges'] = [
-    { s: { r: 0, c: 0 }, e: { r: 0, c: 17 } }, // Title
-    // Header merges
-    { s: { r: 3, c: 0 }, e: { r: 4, c: 0 } }, // 유형
-    { s: { r: 3, c: 1 }, e: { r: 4, c: 1 } }, // 회차
-    { s: { r: 3, c: 2 }, e: { r: 3, c: 3 } }, // 성인
-    { s: { r: 3, c: 4 }, e: { r: 3, c: 5 } }, // 청소년
-    { s: { r: 3, c: 6 }, e: { r: 3, c: 7 } }, // 어린이
-    { s: { r: 3, c: 8 }, e: { r: 3, c: 9 } }, // 유아
-    { s: { r: 3, c: 10 }, e: { r: 3, c: 11 } }, // 성별소계
-    { s: { r: 3, c: 12 }, e: { r: 3, c: 15 } }, // 연령대별 합계
-    { s: { r: 3, c: 16 }, e: { r: 4, c: 16 } }, // 유형별 총계
-    { s: { r: 3, c: 17 }, e: { r: 4, c: 17 } }, // 메모
-    // Data merges for "자유관람" and "예약관람" labels
-    { s: { r: 5, c: 0 }, e: { r: 5 + autonomousSessions.length - 1, c: 0 } },
-    { s: { r: 5 + autonomousSessions.length, c: 0 }, e: { r: 5 + autonomousSessions.length + reservedSessions.length - 1, c: 0 } },
-    // Data merges for type totals
-    { s: { r: 5, c: 16 }, e: { r: 5 + autonomousSessions.length - 1, c: 16 } },
-    { s: { r: 5 + autonomousSessions.length, c: 16 }, e: { r: 5 + autonomousSessions.length + reservedSessions.length - 1, c: 16 } },
-  ];
 
   // Column widths
   ws['!cols'] = [
     { wch: 12 }, // 유형
-    { wch: 10 }, // 회차
-    { wch: 6 }, { wch: 6 }, // 성인
-    { wch: 6 }, { wch: 6 }, // 청소년
-    { wch: 6 }, { wch: 6 }, // 어린이
-    { wch: 6 }, { wch: 6 }, // 유아
-    { wch: 6 }, { wch: 6 }, // 성별소계
-    { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, // 연령대별 합계
+    { wch: 15 }, // 회차
+    { wch: 8 }, { wch: 8 }, // 성인
+    { wch: 8 }, { wch: 8 }, // 청소년
+    { wch: 8 }, { wch: 8 }, // 어린이
+    { wch: 8 }, { wch: 8 }, // 유아
+    { wch: 10 }, { wch: 10 }, // 성별소계
+    { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, // 연령대별 합계
     { wch: 12 }, // 유형별 총계
     { wch: 30 }, // 메모
   ];
 
   XLSX.utils.book_append_sheet(wb, ws, 'Visitor Data');
-  XLSX.writeFile(wb, `${date.replace(/-/g, '')}_자율주행연구소_방문객수.xlsx`);
+  const fileName = `${date.replace(/-/g, '')}_자율주행연구소_방문객수.xlsx`;
+  XLSX.writeFile(wb, fileName);
 };
+
