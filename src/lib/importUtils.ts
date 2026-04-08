@@ -37,60 +37,69 @@ export const parseVisitorFile = async (file: File): Promise<VisitorRecord[]> => 
     const row = rows[i];
     if (!row || row.length < 2) continue;
     
-    // Detect date row: e.g., ",4/1,계,성인,,청소년,,어린이,,유아,,노쇼,운영 횟수,특이사항"
-    // Sometimes row[1] is a number (Excel date) or a string "4/1"
-    let dateVal = String(row[1] || '');
-    if (dateVal.includes('/') && (row[2] === '계' || String(row[2]).includes('계'))) {
-      const dateParts = dateVal.split('/');
-      const month = dateParts[0].padStart(2, '0');
-      const day = dateParts[1].padStart(2, '0');
-      currentDate = `${currentYear}-${month}-${day}`;
+    // Detect date row: e.g., "4/1", "2024-04-01", or Excel serial number
+    let dateVal = row[1];
+    let isDateRow = false;
+    let parsedDate = '';
+
+    if (typeof dateVal === 'number') {
+      // Excel serial date
+      const d = XLSX.SSF.parse_date_code(dateVal);
+      parsedDate = `${currentYear}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`;
+      isDateRow = (row[2] === '계' || String(row[2]).includes('계'));
+    } else if (typeof dateVal === 'string') {
+      const trimmedDate = dateVal.trim();
+      if (trimmedDate.includes('/') && (row[2] === '계' || String(row[2]).includes('계'))) {
+        const parts = trimmedDate.split('/');
+        parsedDate = `${currentYear}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+        isDateRow = true;
+      } else if (trimmedDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        parsedDate = trimmedDate;
+        isDateRow = true;
+      }
+    }
+
+    if (isDateRow) {
+      currentDate = parsedDate;
+      console.log('Detected Date:', currentDate);
       continue;
     }
 
     if (!currentDate) continue;
 
     // We are looking for "다목적실1" block
-    if (String(row[1]).trim() === '다목적실1') {
-      // The rows following "다목적실1" are: 단체, 상시, 1회차, 2회차, 3회차, 4회차, 5회차, 6회차
-      // We process the next 8 rows
-      for (let j = 1; j <= 8; j++) {
-        const dataRow = rows[i + j];
-        if (!dataRow) break;
-        
-        const label = String(dataRow[1]).trim();
-        const mapping = SESSION_MAP[label];
-        
-        if (mapping) {
-          const counts: Counts = {
-            adult_m: parseInt(String(dataRow[3])) || 0,
-            adult_f: parseInt(String(dataRow[4])) || 0,
-            youth_m: parseInt(String(dataRow[5])) || 0,
-            youth_f: parseInt(String(dataRow[6])) || 0,
-            child_m: parseInt(String(dataRow[7])) || 0,
-            child_f: parseInt(String(dataRow[8])) || 0,
-            infant_m: parseInt(String(dataRow[9])) || 0,
-            infant_f: parseInt(String(dataRow[10])) || 0,
-            noShow: mapping.type === 'reserved' ? (parseInt(String(dataRow[11])) || 0) : 0,
-          };
+    const label = String(row[1] || '').trim();
+    
+    // If we find a session label, parse it
+    const mapping = SESSION_MAP[label];
+    if (mapping) {
+      console.log(`Parsing session: ${label} for date: ${currentDate}`);
+      const counts: Counts = {
+        adult_m: parseInt(String(row[3])) || 0,
+        adult_f: parseInt(String(row[4])) || 0,
+        youth_m: parseInt(String(row[5])) || 0,
+        youth_f: parseInt(String(row[6])) || 0,
+        child_m: parseInt(String(row[7])) || 0,
+        child_f: parseInt(String(row[8])) || 0,
+        infant_m: parseInt(String(row[9])) || 0,
+        infant_f: parseInt(String(row[10])) || 0,
+        noShow: mapping.type === 'reserved' ? (parseInt(String(row[11])) || 0) : 0,
+      };
 
-          const total = Object.values(counts).reduce((a, b) => a + b, 0);
-          const memo = String(dataRow[13] || '').trim();
+      const total = Object.values(counts).reduce((a, b) => a + b, 0);
+      const memo = String(row[13] || '').trim();
 
-          if (total > 0 || memo) {
-            records.push({
-              id: `${currentDate}-${mapping.type}-${mapping.session}`,
-              date: currentDate,
-              type: mapping.type,
-              session: mapping.session,
-              counts,
-              memo,
-              updatedAt: Date.now(),
-            });
-          }
-        }
+      if (total > 0 || memo) {
+        records.push({
+          id: `${currentDate}-${mapping.type}-${mapping.session}`,
+          date: currentDate,
+          type: mapping.type,
+          session: mapping.session,
+          counts,
+          memo,
+          updatedAt: Date.now(),
+        });
       }
-      i += 8;
     }
   }
 

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { useStore } from '@/store/useStore';
 import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
@@ -11,7 +11,7 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#f43f5e'];
 const PIE_COLORS = ['#8b5cf6', '#0ea5e9'];
 
 export default function DashboardPage() {
-  const [viewMode, setViewMode] = useState<'daily' | 'monthly' | 'yearly'>('daily');
+  const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [visibleSeries, setVisibleSeries] = useState({
     '성인': true, '청소년': true, '어린이': true, '유아': true,
@@ -40,6 +40,12 @@ export default function DashboardPage() {
   const filteredRecords = useMemo(() => {
     if (viewMode === 'daily') {
       return allRecords.filter(r => r.date === date);
+    } else if (viewMode === 'weekly') {
+      const start = subDays(new Date(date), 6);
+      return allRecords.filter(r => {
+        const d = new Date(r.date);
+        return d >= start && d <= new Date(date);
+      });
     } else if (viewMode === 'monthly') {
       const month = date.substring(0, 7); // YYYY-MM
       return allRecords.filter(r => r.date.startsWith(month));
@@ -88,19 +94,23 @@ export default function DashboardPage() {
   const chartData = useMemo(() => {
     if (viewMode === 'daily') {
       const hourlyMap: Record<string, any> = {};
+      // Initialize common hours
       for (let i = 10; i <= 17; i++) {
-        hourlyMap[`${i}시`] = { name: `${i}시`, 성인: 0, 청소년: 0, 어린이: 0, 유아: 0, 남: 0, 여: 0, 자율관람: 0, 예약관람: 0 };
+        hourlyMap[`${i}시`] = { name: `${i}시`, 성인: 0, 청소년: 0, 어린이: 0, 유아: 0, 자율관람: 0, 예약관람: 0 };
       }
+      
       filteredRecords.forEach(r => {
-        let hourStr = '10시';
+        let hourStr = '';
         if (r.session.includes('시')) {
           hourStr = r.session;
-        } else {
+        } else if (r.session.includes('(')) {
           const match = r.session.match(/\((\d{2}):/);
-          if (match) {
-            hourStr = `${parseInt(match[1])}시`;
-          }
+          if (match) hourStr = `${parseInt(match[1])}시`;
+        } else if (r.session === '단체') {
+          hourStr = '단체';
         }
+        
+        if (!hourStr) return;
         
         if (!hourlyMap[hourStr]) {
           hourlyMap[hourStr] = { 
@@ -126,68 +136,42 @@ export default function DashboardPage() {
         if (r.type === 'autonomous') hourlyMap[hourStr].자율관람 += total;
         else hourlyMap[hourStr].예약관람 += total;
       });
-      return Object.values(hourlyMap).sort((a, b) => parseInt(a.name) - parseInt(b.name));
-    } else if (viewMode === 'monthly') {
-      // Group by day
-      const dailyMap: Record<string, any> = {};
-      filteredRecords.forEach(r => {
-        const day = r.date.split('-')[2];
-        if (!dailyMap[day]) {
-          dailyMap[day] = { 
-            name: `${day}일`, 
-            '성인': 0, '청소년': 0, '어린이': 0, '유아': 0,
-            자율관람: 0, 예약관람: 0 
-          };
-        }
-        const safeCounts = {
-          adult_m: r.counts.adult_m || 0, adult_f: r.counts.adult_f || 0,
-          youth_m: r.counts.youth_m || 0, youth_f: r.counts.youth_f || 0,
-          child_m: r.counts.child_m || 0, child_f: r.counts.child_f || 0,
-          infant_m: r.counts.infant_m || 0, infant_f: r.counts.infant_f || 0,
-        };
-        const total = (Object.values(safeCounts) as number[]).reduce((a, b) => a + b, 0);
-        
-        dailyMap[day]['성인'] += safeCounts.adult_m + safeCounts.adult_f;
-        dailyMap[day]['청소년'] += safeCounts.youth_m + safeCounts.youth_f;
-        dailyMap[day]['어린이'] += safeCounts.child_m + safeCounts.child_f;
-        dailyMap[day]['유아'] += safeCounts.infant_m + safeCounts.infant_f;
-        
-        if (r.type === 'autonomous') dailyMap[day].자율관람 += total;
-        else dailyMap[day].예약관람 += total;
+      return Object.values(hourlyMap).sort((a, b) => {
+        if (a.name === '단체') return 1;
+        if (b.name === '단체') return -1;
+        return parseInt(a.name) - parseInt(b.name);
       });
-      return Object.values(dailyMap).sort((a, b) => a.name.localeCompare(b.name));
-    } else {
-      // Group by month
-      const monthlyMap: Record<string, any> = {};
-      filteredRecords.forEach(r => {
-        const month = r.date.split('-')[1];
-        if (!monthlyMap[month]) {
-          monthlyMap[month] = { 
-            name: `${parseInt(month)}월`, 
-            '성인': 0, '청소년': 0, '어린이': 0, '유아': 0,
-            자율관람: 0, 예약관람: 0 
-          };
-        }
-        const safeCounts = {
-          adult_m: r.counts.adult_m || 0, adult_f: r.counts.adult_f || 0,
-          youth_m: r.counts.youth_m || 0, youth_f: r.counts.youth_f || 0,
-          child_m: r.counts.child_m || 0, child_f: r.counts.child_f || 0,
-          infant_m: r.counts.infant_m || 0, infant_f: r.counts.infant_f || 0,
-        };
-        const total = (Object.values(safeCounts) as number[]).reduce((a, b) => a + b, 0);
-        
-        monthlyMap[month]['성인'] += safeCounts.adult_m + safeCounts.adult_f;
-        monthlyMap[month]['청소년'] += safeCounts.youth_m + safeCounts.youth_f;
-        monthlyMap[month]['어린이'] += safeCounts.child_m + safeCounts.child_f;
-        monthlyMap[month]['유아'] += safeCounts.infant_m + safeCounts.infant_f;
-        
-        if (r.type === 'autonomous') monthlyMap[month].자율관람 += total;
-        else monthlyMap[month].예약관람 += total;
-      });
-      return Object.values(monthlyMap).sort((a, b) => parseInt(a.name) - parseInt(b.name));
     }
-  }, [filteredRecords, viewMode]);
 
+    // Weekly/Monthly: Use Line Chart data
+    const dailyMap: Record<string, any> = {};
+    filteredRecords.forEach(r => {
+      const day = r.date;
+      if (!dailyMap[day]) {
+        dailyMap[day] = { 
+          name: format(new Date(day), 'MM/dd'), 
+          '성인': 0, '청소년': 0, '어린이': 0, '유아': 0,
+          자율관람: 0, 예약관람: 0 
+        };
+      }
+      const safeCounts = {
+        adult_m: r.counts.adult_m || 0, adult_f: r.counts.adult_f || 0,
+        youth_m: r.counts.youth_m || 0, youth_f: r.counts.youth_f || 0,
+        child_m: r.counts.child_m || 0, child_f: r.counts.child_f || 0,
+        infant_m: r.counts.infant_m || 0, infant_f: r.counts.infant_f || 0,
+      };
+      const total = (Object.values(safeCounts) as number[]).reduce((a, b) => a + b, 0);
+      
+      dailyMap[day]['성인'] += safeCounts.adult_m + safeCounts.adult_f;
+      dailyMap[day]['청소년'] += safeCounts.youth_m + safeCounts.youth_f;
+      dailyMap[day]['어린이'] += safeCounts.child_m + safeCounts.child_f;
+      dailyMap[day]['유아'] += safeCounts.infant_m + safeCounts.infant_f;
+      
+      if (r.type === 'autonomous') dailyMap[day].자율관람 += total;
+      else dailyMap[day].예약관람 += total;
+    });
+    return Object.values(dailyMap).sort((a, b) => a.name.localeCompare(b.name));
+  }, [filteredRecords, viewMode]);
   const pieData = [
     { name: '남성', value: stats.breakdown['성인(남)'] + stats.breakdown['청소년(남)'] + stats.breakdown['어린이(남)'] + stats.breakdown['유아(남)'] },
     { name: '여성', value: stats.breakdown['성인(여)'] + stats.breakdown['청소년(여)'] + stats.breakdown['어린이(여)'] + stats.breakdown['유아(여)'] },
@@ -385,27 +369,42 @@ export default function DashboardPage() {
         <div id="comprehensive-chart" className="h-[320px] w-full bg-white p-2 rounded-xl">
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
-                <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
-                <Tooltip 
-                  cursor={{ fill: '#f8fafc', opacity: 0.8 }}
-                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#f1f5f9', borderRadius: '12px', color: '#0f172a', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
-                  itemStyle={{ color: '#0f172a', fontWeight: 'bold' }}
-                />
-                <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingTop: '10px' }} />
-                
-                {/* Age Breakdown */}
-                {visibleSeries['성인'] && <Bar dataKey="성인" stackId="age" fill="#3b82f6" radius={[0, 0, 0, 0]} />}
-                {visibleSeries['청소년'] && <Bar dataKey="청소년" stackId="age" fill="#10b981" />}
-                {visibleSeries['어린이'] && <Bar dataKey="어린이" stackId="age" fill="#f59e0b" />}
-                {visibleSeries['유아'] && <Bar dataKey="유아" stackId="age" fill="#f43f5e" radius={[4, 4, 0, 0]} />}
-
-                {/* Type */}
-                {visibleSeries.자율관람 && <Bar dataKey="자율관람" stackId="type" fill="#8b5cf6" radius={[4, 4, 4, 4]} />}
-                {visibleSeries.예약관람 && <Bar dataKey="예약관람" stackId="type" fill="#0ea5e9" radius={[4, 4, 4, 4]} />}
-              </BarChart>
+              {viewMode === 'daily' ? (
+                <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
+                  <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
+                  <Tooltip 
+                    cursor={{ fill: '#f8fafc', opacity: 0.8 }}
+                    contentStyle={{ backgroundColor: '#ffffff', borderColor: '#f1f5f9', borderRadius: '12px', color: '#0f172a', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                    itemStyle={{ color: '#0f172a', fontWeight: 'bold' }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingTop: '10px' }} />
+                  {visibleSeries['성인'] && <Bar dataKey="성인" stackId="age" fill="#3b82f6" radius={[0, 0, 0, 0]} />}
+                  {visibleSeries['청소년'] && <Bar dataKey="청소년" stackId="age" fill="#10b981" />}
+                  {visibleSeries['어린이'] && <Bar dataKey="어린이" stackId="age" fill="#f59e0b" />}
+                  {visibleSeries['유아'] && <Bar dataKey="유아" stackId="age" fill="#f43f5e" radius={[4, 4, 0, 0]} />}
+                  {visibleSeries.자율관람 && <Bar dataKey="자율관람" fill="#8b5cf6" radius={[4, 4, 4, 4]} />}
+                  {visibleSeries.예약관람 && <Bar dataKey="예약관람" fill="#0ea5e9" radius={[4, 4, 4, 4]} />}
+                </BarChart>
+              ) : (
+                <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
+                  <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#ffffff', borderColor: '#f1f5f9', borderRadius: '12px', color: '#0f172a', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                    itemStyle={{ color: '#0f172a', fontWeight: 'bold' }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingTop: '10px' }} />
+                  {visibleSeries['성인'] && <Line type="monotone" dataKey="성인" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />}
+                  {visibleSeries['청소년'] && <Line type="monotone" dataKey="청소년" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} />}
+                  {visibleSeries['어린이'] && <Line type="monotone" dataKey="어린이" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4 }} />}
+                  {visibleSeries['유아'] && <Line type="monotone" dataKey="유아" stroke="#f43f5e" strokeWidth={3} dot={{ r: 4 }} />}
+                  {visibleSeries.자율관람 && <Line type="monotone" dataKey="자율관람" stroke="#8b5cf6" strokeWidth={2} strokeDasharray="5 5" />}
+                  {visibleSeries.예약관람 && <Line type="monotone" dataKey="예약관람" stroke="#0ea5e9" strokeWidth={2} strokeDasharray="5 5" />}
+                </LineChart>
+              )}
             </ResponsiveContainer>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 text-sm bg-slate-50 rounded-xl border border-slate-100 border-dashed">
