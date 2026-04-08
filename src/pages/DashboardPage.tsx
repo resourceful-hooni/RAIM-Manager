@@ -14,9 +14,11 @@ export default function DashboardPage() {
   const [viewMode, setViewMode] = useState<'daily' | 'monthly' | 'yearly'>('daily');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [visibleSeries, setVisibleSeries] = useState({
-    남: true, 여: true,
-    성인: true, 청소년: true, 어린이: true, 유아: true,
-    자율관람: true, 예약관람: true
+    '성인(남)': true, '성인(여)': true,
+    '청소년(남)': true, '청소년(여)': true,
+    '어린이(남)': true, '어린이(여)': true,
+    '유아(남)': true, '유아(여)': true,
+    '자율관람': false, '예약관람': false
   });
   const { getAllRecords } = useStore();
 
@@ -54,15 +56,36 @@ export default function DashboardPage() {
     let total = 0;
     let autonomous = 0;
     let reserved = 0;
+    const breakdown = {
+      '성인(남)': 0, '성인(여)': 0,
+      '청소년(남)': 0, '청소년(여)': 0,
+      '어린이(남)': 0, '어린이(여)': 0,
+      '유아(남)': 0, '유아(여)': 0,
+    };
 
     filteredRecords.forEach(r => {
-      const sum = (Object.values(r.counts) as number[]).reduce((a, b) => a + b, 0);
+      const safeCounts = {
+        adult_m: r.counts.adult_m || 0, adult_f: r.counts.adult_f || 0,
+        youth_m: r.counts.youth_m || 0, youth_f: r.counts.youth_f || 0,
+        child_m: r.counts.child_m || 0, child_f: r.counts.child_f || 0,
+        infant_m: r.counts.infant_m || 0, infant_f: r.counts.infant_f || 0,
+      };
+      const sum = (Object.values(safeCounts) as number[]).reduce((a, b) => a + b, 0);
       total += sum;
       if (r.type === 'autonomous') autonomous += sum;
       else reserved += sum;
+
+      breakdown['성인(남)'] += safeCounts.adult_m;
+      breakdown['성인(여)'] += safeCounts.adult_f;
+      breakdown['청소년(남)'] += safeCounts.youth_m;
+      breakdown['청소년(여)'] += safeCounts.youth_f;
+      breakdown['어린이(남)'] += safeCounts.child_m;
+      breakdown['어린이(여)'] += safeCounts.child_f;
+      breakdown['유아(남)'] += safeCounts.infant_m;
+      breakdown['유아(여)'] += safeCounts.infant_f;
     });
 
-    return { total, autonomous, reserved };
+    return { total, autonomous, reserved, breakdown };
   }, [filteredRecords]);
 
   const chartData = useMemo(() => {
@@ -83,7 +106,14 @@ export default function DashboardPage() {
         }
         
         if (!hourlyMap[hourStr]) {
-          hourlyMap[hourStr] = { name: hourStr, 성인: 0, 청소년: 0, 어린이: 0, 유아: 0, 남: 0, 여: 0, 자율관람: 0, 예약관람: 0 };
+          hourlyMap[hourStr] = { 
+            name: hourStr, 
+            '성인(남)': 0, '성인(여)': 0, 
+            '청소년(남)': 0, '청소년(여)': 0, 
+            '어린이(남)': 0, '어린이(여)': 0, 
+            '유아(남)': 0, '유아(여)': 0, 
+            자율관람: 0, 예약관람: 0 
+          };
         }
         
         const safeCounts = {
@@ -94,12 +124,14 @@ export default function DashboardPage() {
         };
         const total = (Object.values(safeCounts) as number[]).reduce((a, b) => a + b, 0);
         
-        hourlyMap[hourStr].성인 += safeCounts.adult_m + safeCounts.adult_f;
-        hourlyMap[hourStr].청소년 += safeCounts.youth_m + safeCounts.youth_f;
-        hourlyMap[hourStr].어린이 += safeCounts.child_m + safeCounts.child_f;
-        hourlyMap[hourStr].유아 += safeCounts.infant_m + safeCounts.infant_f;
-        hourlyMap[hourStr].남 += safeCounts.adult_m + safeCounts.youth_m + safeCounts.child_m + safeCounts.infant_m;
-        hourlyMap[hourStr].여 += safeCounts.adult_f + safeCounts.youth_f + safeCounts.child_f + safeCounts.infant_f;
+        hourlyMap[hourStr]['성인(남)'] += safeCounts.adult_m;
+        hourlyMap[hourStr]['성인(여)'] += safeCounts.adult_f;
+        hourlyMap[hourStr]['청소년(남)'] += safeCounts.youth_m;
+        hourlyMap[hourStr]['청소년(여)'] += safeCounts.youth_f;
+        hourlyMap[hourStr]['어린이(남)'] += safeCounts.child_m;
+        hourlyMap[hourStr]['어린이(여)'] += safeCounts.child_f;
+        hourlyMap[hourStr]['유아(남)'] += safeCounts.infant_m;
+        hourlyMap[hourStr]['유아(여)'] += safeCounts.infant_f;
         
         if (r.type === 'autonomous') hourlyMap[hourStr].자율관람 += total;
         else hourlyMap[hourStr].예약관람 += total;
@@ -111,7 +143,14 @@ export default function DashboardPage() {
       filteredRecords.forEach(r => {
         const day = r.date.split('-')[2];
         if (!dailyMap[day]) {
-          dailyMap[day] = { name: `${day}일`, 성인: 0, 청소년: 0, 어린이: 0, 유아: 0, 남: 0, 여: 0, 자율관람: 0, 예약관람: 0 };
+          dailyMap[day] = { 
+            name: `${day}일`, 
+            '성인(남)': 0, '성인(여)': 0, 
+            '청소년(남)': 0, '청소년(여)': 0, 
+            '어린이(남)': 0, '어린이(여)': 0, 
+            '유아(남)': 0, '유아(여)': 0, 
+            자율관람: 0, 예약관람: 0 
+          };
         }
         const safeCounts = {
           adult_m: r.counts.adult_m || 0, adult_f: r.counts.adult_f || 0,
@@ -120,12 +159,16 @@ export default function DashboardPage() {
           infant_m: r.counts.infant_m || 0, infant_f: r.counts.infant_f || 0,
         };
         const total = (Object.values(safeCounts) as number[]).reduce((a, b) => a + b, 0);
-        dailyMap[day].성인 += safeCounts.adult_m + safeCounts.adult_f;
-        dailyMap[day].청소년 += safeCounts.youth_m + safeCounts.youth_f;
-        dailyMap[day].어린이 += safeCounts.child_m + safeCounts.child_f;
-        dailyMap[day].유아 += safeCounts.infant_m + safeCounts.infant_f;
-        dailyMap[day].남 += safeCounts.adult_m + safeCounts.youth_m + safeCounts.child_m + safeCounts.infant_m;
-        dailyMap[day].여 += safeCounts.adult_f + safeCounts.youth_f + safeCounts.child_f + safeCounts.infant_f;
+        
+        dailyMap[day]['성인(남)'] += safeCounts.adult_m;
+        dailyMap[day]['성인(여)'] += safeCounts.adult_f;
+        dailyMap[day]['청소년(남)'] += safeCounts.youth_m;
+        dailyMap[day]['청소년(여)'] += safeCounts.youth_f;
+        dailyMap[day]['어린이(남)'] += safeCounts.child_m;
+        dailyMap[day]['어린이(여)'] += safeCounts.child_f;
+        dailyMap[day]['유아(남)'] += safeCounts.infant_m;
+        dailyMap[day]['유아(여)'] += safeCounts.infant_f;
+        
         if (r.type === 'autonomous') dailyMap[day].자율관람 += total;
         else dailyMap[day].예약관람 += total;
       });
@@ -136,7 +179,14 @@ export default function DashboardPage() {
       filteredRecords.forEach(r => {
         const month = r.date.split('-')[1];
         if (!monthlyMap[month]) {
-          monthlyMap[month] = { name: `${parseInt(month)}월`, 성인: 0, 청소년: 0, 어린이: 0, 유아: 0, 남: 0, 여: 0, 자율관람: 0, 예약관람: 0 };
+          monthlyMap[month] = { 
+            name: `${parseInt(month)}월`, 
+            '성인(남)': 0, '성인(여)': 0, 
+            '청소년(남)': 0, '청소년(여)': 0, 
+            '어린이(남)': 0, '어린이(여)': 0, 
+            '유아(남)': 0, '유아(여)': 0, 
+            자율관람: 0, 예약관람: 0 
+          };
         }
         const safeCounts = {
           adult_m: r.counts.adult_m || 0, adult_f: r.counts.adult_f || 0,
@@ -145,12 +195,16 @@ export default function DashboardPage() {
           infant_m: r.counts.infant_m || 0, infant_f: r.counts.infant_f || 0,
         };
         const total = (Object.values(safeCounts) as number[]).reduce((a, b) => a + b, 0);
-        monthlyMap[month].성인 += safeCounts.adult_m + safeCounts.adult_f;
-        monthlyMap[month].청소년 += safeCounts.youth_m + safeCounts.youth_f;
-        monthlyMap[month].어린이 += safeCounts.child_m + safeCounts.child_f;
-        monthlyMap[month].유아 += safeCounts.infant_m + safeCounts.infant_f;
-        monthlyMap[month].남 += safeCounts.adult_m + safeCounts.youth_m + safeCounts.child_m + safeCounts.infant_m;
-        monthlyMap[month].여 += safeCounts.adult_f + safeCounts.youth_f + safeCounts.child_f + safeCounts.infant_f;
+        
+        monthlyMap[month]['성인(남)'] += safeCounts.adult_m;
+        monthlyMap[month]['성인(여)'] += safeCounts.adult_f;
+        monthlyMap[month]['청소년(남)'] += safeCounts.youth_m;
+        monthlyMap[month]['청소년(여)'] += safeCounts.youth_f;
+        monthlyMap[month]['어린이(남)'] += safeCounts.child_m;
+        monthlyMap[month]['어린이(여)'] += safeCounts.child_f;
+        monthlyMap[month]['유아(남)'] += safeCounts.infant_m;
+        monthlyMap[month]['유아(여)'] += safeCounts.infant_f;
+        
         if (r.type === 'autonomous') monthlyMap[month].자율관람 += total;
         else monthlyMap[month].예약관람 += total;
       });
@@ -159,8 +213,8 @@ export default function DashboardPage() {
   }, [filteredRecords, viewMode]);
 
   const pieData = [
-    { name: '자율관람', value: stats.autonomous },
-    { name: '예약관람', value: stats.reserved },
+    { name: '남성', value: stats.breakdown['성인(남)'] + stats.breakdown['청소년(남)'] + stats.breakdown['어린이(남)'] + stats.breakdown['유아(남)'] },
+    { name: '여성', value: stats.breakdown['성인(여)'] + stats.breakdown['청소년(여)'] + stats.breakdown['어린이(여)'] + stats.breakdown['유아(여)'] },
   ];
 
   // Predictive Logic
@@ -289,16 +343,33 @@ export default function DashboardPage() {
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex flex-col space-y-2 text-xs font-bold mt-2">
+          <div className="flex flex-col space-y-2 text-[10px] font-bold mt-2">
             <div className="flex items-center space-x-1.5">
               <div className="w-2.5 h-2.5 rounded-full bg-[#8b5cf6] shadow-sm" />
-              <span className="text-slate-600">자율 {stats.autonomous}</span>
+              <span className="text-slate-600">남 {pieData[0].value}명</span>
             </div>
             <div className="flex items-center space-x-1.5">
               <div className="w-2.5 h-2.5 rounded-full bg-[#0ea5e9] shadow-sm" />
-              <span className="text-slate-600">예약 {stats.reserved}</span>
+              <span className="text-slate-600">여 {pieData[1].value}명</span>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Detailed Breakdown Table */}
+      <div className="bg-white border border-slate-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)] rounded-3xl p-6 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1 bg-slate-200" />
+        <h3 className="text-sm font-extrabold text-slate-800 tracking-tight mb-4 flex items-center">
+          <BarChart2 className="w-4 h-4 mr-2 text-blue-500" />
+          상세 방문객 분포 (연령/성별)
+        </h3>
+        <div className="grid grid-cols-2 gap-3">
+          {Object.entries(stats.breakdown).map(([key, value]) => (
+            <div key={key} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-100">
+              <span className="text-xs font-bold text-slate-600">{key}</span>
+              <span className="text-sm font-black text-slate-900">{value}명</span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -349,19 +420,22 @@ export default function DashboardPage() {
                 />
                 <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingTop: '10px' }} />
                 
-                {/* Gender */}
-                {visibleSeries.남 && <Bar dataKey="남" stackId="gender" fill="#3b82f6" radius={[0, 0, 4, 4]} />}
-                {visibleSeries.여 && <Bar dataKey="여" stackId="gender" fill="#f43f5e" radius={[4, 4, 0, 0]} />}
+                {/* Detailed Breakdown */}
+                {visibleSeries['성인(남)'] && <Bar dataKey="성인(남)" stackId="age_gender" fill="#2563eb" radius={[0, 0, 4, 4]} />}
+                {visibleSeries['성인(여)'] && <Bar dataKey="성인(여)" stackId="age_gender" fill="#60a5fa" />}
                 
-                {/* Age */}
-                {visibleSeries.성인 && <Bar dataKey="성인" stackId="age" fill={COLORS[0]} radius={[0, 0, 4, 4]} />}
-                {visibleSeries.청소년 && <Bar dataKey="청소년" stackId="age" fill={COLORS[1]} />}
-                {visibleSeries.어린이 && <Bar dataKey="어린이" stackId="age" fill={COLORS[2]} />}
-                {visibleSeries.유아 && <Bar dataKey="유아" stackId="age" fill={COLORS[3]} radius={[4, 4, 0, 0]} />}
+                {visibleSeries['청소년(남)'] && <Bar dataKey="청소년(남)" stackId="age_gender" fill="#059669" />}
+                {visibleSeries['청소년(여)'] && <Bar dataKey="청소년(여)" stackId="age_gender" fill="#34d399" />}
+                
+                {visibleSeries['어린이(남)'] && <Bar dataKey="어린이(남)" stackId="age_gender" fill="#d97706" />}
+                {visibleSeries['어린이(여)'] && <Bar dataKey="어린이(여)" stackId="age_gender" fill="#fbbf24" />}
+                
+                {visibleSeries['유아(남)'] && <Bar dataKey="유아(남)" stackId="age_gender" fill="#e11d48" />}
+                {visibleSeries['유아(여)'] && <Bar dataKey="유아(여)" stackId="age_gender" fill="#fb7185" radius={[4, 4, 0, 0]} />}
 
                 {/* Type */}
-                {visibleSeries.자율관람 && <Bar dataKey="자율관람" stackId="type" fill="#8b5cf6" radius={[0, 0, 4, 4]} />}
-                {visibleSeries.예약관람 && <Bar dataKey="예약관람" stackId="type" fill="#0ea5e9" radius={[4, 4, 0, 0]} />}
+                {visibleSeries.자율관람 && <Bar dataKey="자율관람" stackId="type" fill="#8b5cf6" radius={[4, 4, 4, 4]} />}
+                {visibleSeries.예약관람 && <Bar dataKey="예약관람" stackId="type" fill="#0ea5e9" radius={[4, 4, 4, 4]} />}
               </BarChart>
             </ResponsiveContainer>
           ) : (

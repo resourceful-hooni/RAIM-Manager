@@ -65,22 +65,22 @@ export default function HistoryPage() {
                   <div className="bg-blue-50/50 border border-blue-100/50 rounded-xl p-2.5 text-center">
                     <div className="text-[10px] font-bold text-slate-500 mb-0.5">성인</div>
                     <div className="text-lg font-black text-blue-600 tracking-tighter">{safeCounts.adult_m + safeCounts.adult_f}</div>
-                    <div className="text-[9px] font-medium text-slate-400 mt-0.5">({safeCounts.adult_m}/{safeCounts.adult_f})</div>
+                    <div className="text-[9px] font-bold text-slate-400 mt-0.5">남 {safeCounts.adult_m} / 여 {safeCounts.adult_f}</div>
                   </div>
                   <div className="bg-emerald-50/50 border border-emerald-100/50 rounded-xl p-2.5 text-center">
                     <div className="text-[10px] font-bold text-slate-500 mb-0.5">청소년</div>
                     <div className="text-lg font-black text-emerald-600 tracking-tighter">{safeCounts.youth_m + safeCounts.youth_f}</div>
-                    <div className="text-[9px] font-medium text-slate-400 mt-0.5">({safeCounts.youth_m}/{safeCounts.youth_f})</div>
+                    <div className="text-[9px] font-bold text-slate-400 mt-0.5">남 {safeCounts.youth_m} / 여 {safeCounts.youth_f}</div>
                   </div>
                   <div className="bg-amber-50/50 border border-amber-100/50 rounded-xl p-2.5 text-center">
                     <div className="text-[10px] font-bold text-slate-500 mb-0.5">어린이</div>
                     <div className="text-lg font-black text-amber-600 tracking-tighter">{safeCounts.child_m + safeCounts.child_f}</div>
-                    <div className="text-[9px] font-medium text-slate-400 mt-0.5">({safeCounts.child_m}/{safeCounts.child_f})</div>
+                    <div className="text-[9px] font-bold text-slate-400 mt-0.5">남 {safeCounts.child_m} / 여 {safeCounts.child_f}</div>
                   </div>
                   <div className="bg-rose-50/50 border border-rose-100/50 rounded-xl p-2.5 text-center">
                     <div className="text-[10px] font-bold text-slate-500 mb-0.5">유아</div>
                     <div className="text-lg font-black text-rose-600 tracking-tighter">{safeCounts.infant_m + safeCounts.infant_f}</div>
-                    <div className="text-[9px] font-medium text-slate-400 mt-0.5">({safeCounts.infant_m}/{safeCounts.infant_f})</div>
+                    <div className="text-[9px] font-bold text-slate-400 mt-0.5">남 {safeCounts.infant_m} / 여 {safeCounts.infant_f}</div>
                   </div>
                 </div>
 
