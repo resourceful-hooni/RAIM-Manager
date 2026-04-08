@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 import { VisitorRecord } from '@/store/useStore';
 
 export const exportToXLSX = (date: string, allRecords: VisitorRecord[]) => {
@@ -68,13 +69,11 @@ export const exportToXLSX = (date: string, allRecords: VisitorRecord[]) => {
           c.infant_m || 0, c.infant_f || 0,
           rowMale, rowFemale,
           rowAdult, rowYouth, rowChild, rowInfant,
-          idx === 0 ? 'PENDING' : '',
+          idx === 0 ? typeTotal : '',
           m
         ]);
       });
       
-      const firstRowIdx = data.length - sessions.length;
-      data[firstRowIdx][16] = typeTotal;
       return typeTotal;
     };
 
@@ -130,11 +129,14 @@ export const exportToXLSX = (date: string, allRecords: VisitorRecord[]) => {
 
     XLSX.utils.book_append_sheet(wb, ws, 'Visitor Data');
     
+    // Generate buffer
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
+    
     const fileName = `${date.replace(/-/g, '')}_자율주행연구소_방문객수.xlsx`;
-    XLSX.writeFile(wb, fileName);
+    saveAs(blob, fileName);
   } catch (error) {
     console.error('Excel Export Error:', error);
-    alert('엑셀 내보내기 중 오류가 발생했습니다. 콘솔 로그를 확인해주세요.');
   }
 };
 

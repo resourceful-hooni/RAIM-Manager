@@ -42,7 +42,7 @@ export default function Layout() {
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
           <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-600 rounded-2xl flex items-center justify-center border border-blue-100 shadow-inner overflow-hidden transform rotate-3">
             {!logoError ? (
-              <img src="logo.png" alt="RAIM Logo" className="w-full h-full object-cover transform -rotate-3" onError={() => setLogoError(true)} />
+              <img src="/logo.png" alt="RAIM Logo" className="w-full h-full object-cover transform -rotate-3" onError={() => setLogoError(true)} />
             ) : (
               <Bot className="w-10 h-10 transform -rotate-3" />
             )}
@@ -72,7 +72,7 @@ export default function Layout() {
         <NavLink to="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity group">
           <div className="w-9 h-9 bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-600 rounded-xl flex items-center justify-center border border-blue-100 shadow-sm overflow-hidden shrink-0 group-hover:shadow-md transition-all">
             {!logoError ? (
-              <img src="logo.png" alt="RAIM Logo" className="w-full h-full object-cover" onError={() => setLogoError(true)} />
+              <img src="/logo.png" alt="RAIM Logo" className="w-full h-full object-cover" onError={() => setLogoError(true)} />
             ) : (
               <Bot className="w-5 h-5" />
             )}
