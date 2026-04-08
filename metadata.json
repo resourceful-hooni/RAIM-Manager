@@ -1,0 +1,5 @@
+{
+  "name": "RAIM Visitor Counter",
+  "description": "서울로봇인공지능과학관(RAIM) 무인자동차 관람실 방문객 관리 시스템",
+  "requestFramePermissions": []
+}

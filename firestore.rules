@@ -1,0 +1,72 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: records
+    // Document ID: {date}-{type}-{session}
+    // Fields:
+    //   - id: string (required) - Unique identifier
+    //   - date: string (required) - Date in YYYY-MM-DD format
+    //   - type: string (required) - "autonomous" or "reserved"
+    //   - session: string (required) - Session time or label
+    //   - counts: map (required) - Contains adult, youth, child, infant (all numbers)
+    //   - memo: string (optional) - Notes
+    //   - updatedAt: number (required) - Timestamp of last update
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function isValidCounts(counts) {
+      return counts is map &&
+             counts.keys().hasAll(['adult', 'youth', 'child', 'infant']) &&
+             counts.adult is number && counts.adult >= 0 &&
+             counts.youth is number && counts.youth >= 0 &&
+             counts.child is number && counts.child >= 0 &&
+             counts.infant is number && counts.infant >= 0;
+    }
+
+    function isValidRecord(data) {
+      return hasRequiredFields(['id', 'date', 'type', 'session', 'counts', 'updatedAt']) &&
+             data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
+             data.date is string && data.date.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
+             data.type in ['autonomous', 'reserved'] &&
+             data.session is string && data.session.size() > 0 && data.session.size() < 50 &&
+             isValidCounts(data.counts) &&
+             (!('memo' in data) || (data.memo is string && data.memo.size() <= 1000)) &&
+             data.updatedAt is number;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /records/{recordId} {
+      // Allow read for any authenticated user (admin/staff)
+      allow read: if isAuthenticated();
+      
+      // Allow create if authenticated and data is valid
+      allow create: if isAuthenticated() && isValidRecord(request.resource.data);
+      
+      // Allow update if authenticated and data is valid
+      allow update: if isAuthenticated() && isValidRecord(request.resource.data);
+      
+      // Allow delete if authenticated
+      allow delete: if isAuthenticated();
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "entities": {
+    "VisitorRecord": {
+      "title": "VisitorRecord",
+      "description": "A record of visitor counts for a specific date and session",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier (date-type-session)" },
+        "date": { "type": "string", "description": "Date in YYYY-MM-DD format" },
+        "type": { "type": "string", "enum": ["autonomous", "reserved"], "description": "Type of visit" },
+        "session": { "type": "string", "description": "Session time or label" },
+        "counts": {
+          "type": "object",
+          "properties": {
+            "adult": { "type": "number" },
+            "youth": { "type": "number" },
+            "child": { "type": "number" },
+            "infant": { "type": "number" }
+          }
+        },
+        "memo": { "type": "string", "description": "Optional notes" },
+        "updatedAt": { "type": "number", "description": "Timestamp of last update" }
+      },
+      "required": ["id", "date", "type", "session", "counts", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/records/{recordId}": {
+      "schema": { "$ref": "#/entities/VisitorRecord" },
+      "description": "Stores visitor counting records"
+    }
+  }
+}
