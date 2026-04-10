@@ -15,13 +15,14 @@ export default function DashboardPage() {
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [visibleSeries, setVisibleSeries] = useState({
     '성인': true, '청소년': true, '어린이': true, '유아': true,
-    '남성': true, '여성': true,
+    '남성': false, '여성': false,
     '성인(남)': true, '성인(여)': true,
     '청소년(남)': true, '청소년(여)': true,
     '어린이(남)': true, '어린이(여)': true,
     '유아(남)': true, '유아(여)': true,
     '자율관람': true, '예약관람': true
   });
+  const [isDownloading, setIsDownloading] = useState(false);
   const { getAllRecords } = useStore();
 
   const toggleSeries = (key: keyof typeof visibleSeries) => {
@@ -29,15 +30,45 @@ export default function DashboardPage() {
   };
 
   const handleDownloadChart = async (chartId: string, filename: string) => {
-    const chartElement = document.getElementById(chartId);
-    if (chartElement) {
-      const canvas = await html2canvas(chartElement, { backgroundColor: '#ffffff', scale: 2 });
-      canvas.toBlob((blob) => {
-        if (blob) {
-          saveAs(blob, `${filename}.png`);
+    setIsDownloading(true);
+    
+    // Wait for state update to disable animations
+    setTimeout(async () => {
+      const chartElement = document.getElementById(chartId);
+      if (chartElement) {
+        try {
+          // Temporarily set fixed dimensions to prevent ResponsiveContainer from collapsing
+          const originalWidth = chartElement.style.width;
+          const originalHeight = chartElement.style.height;
+          chartElement.style.width = `${chartElement.offsetWidth}px`;
+          chartElement.style.height = `${chartElement.offsetHeight}px`;
+
+          const canvas = await html2canvas(chartElement, { 
+            backgroundColor: '#ffffff', 
+            scale: 2,
+            logging: false,
+            useCORS: true
+          });
+          
+          // Restore original dimensions
+          chartElement.style.width = originalWidth;
+          chartElement.style.height = originalHeight;
+
+          canvas.toBlob((blob) => {
+            if (blob) {
+              saveAs(blob, `${filename}.png`);
+            }
+            setIsDownloading(false);
+          });
+        } catch (error) {
+          console.error("Error generating chart image:", error);
+          alert("차트 이미지 저장 중 오류가 발생했습니다.");
+          setIsDownloading(false);
         }
-      });
-    }
+      } else {
+        setIsDownloading(false);
+      }
+    }, 100);
   };
 
   const allRecords = getAllRecords();
@@ -507,25 +538,25 @@ export default function DashboardPage() {
                     itemStyle={{ color: '#0f172a', fontWeight: 'bold' }}
                   />
                   <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingTop: '10px' }} />
-                  {visibleSeries['성인'] && <Bar dataKey="성인" stackId="age" fill="#3b82f6" />}
-                  {visibleSeries['청소년'] && <Bar dataKey="청소년" stackId="age" fill="#10b981" />}
-                  {visibleSeries['어린이'] && <Bar dataKey="어린이" stackId="age" fill="#f59e0b" />}
-                  {visibleSeries['유아'] && <Bar dataKey="유아" stackId="age" fill="#f43f5e" />}
+                  {visibleSeries['성인'] && <Bar dataKey="성인" stackId="age" fill="#3b82f6" isAnimationActive={!isDownloading} />}
+                  {visibleSeries['청소년'] && <Bar dataKey="청소년" stackId="age" fill="#10b981" isAnimationActive={!isDownloading} />}
+                  {visibleSeries['어린이'] && <Bar dataKey="어린이" stackId="age" fill="#f59e0b" isAnimationActive={!isDownloading} />}
+                  {visibleSeries['유아'] && <Bar dataKey="유아" stackId="age" fill="#f43f5e" isAnimationActive={!isDownloading} />}
                   
-                  {visibleSeries['남성'] && <Bar dataKey="남성" stackId="gender" fill="#8b5cf6" />}
-                  {visibleSeries['여성'] && <Bar dataKey="여성" stackId="gender" fill="#0ea5e9" />}
+                  {visibleSeries['남성'] && <Bar dataKey="남성" stackId="gender" fill="#8b5cf6" isAnimationActive={!isDownloading} />}
+                  {visibleSeries['여성'] && <Bar dataKey="여성" stackId="gender" fill="#0ea5e9" isAnimationActive={!isDownloading} />}
 
-                  {visibleSeries['성인(남)'] && <Bar dataKey="성인(남)" stackId="age_gender" fill="#1e3a8a" />}
-                  {visibleSeries['성인(여)'] && <Bar dataKey="성인(여)" stackId="age_gender" fill="#60a5fa" />}
-                  {visibleSeries['청소년(남)'] && <Bar dataKey="청소년(남)" stackId="age_gender" fill="#064e3b" />}
-                  {visibleSeries['청소년(여)'] && <Bar dataKey="청소년(여)" stackId="age_gender" fill="#34d399" />}
-                  {visibleSeries['어린이(남)'] && <Bar dataKey="어린이(남)" stackId="age_gender" fill="#78350f" />}
-                  {visibleSeries['어린이(여)'] && <Bar dataKey="어린이(여)" stackId="age_gender" fill="#fbbf24" />}
-                  {visibleSeries['유아(남)'] && <Bar dataKey="유아(남)" stackId="age_gender" fill="#881337" />}
-                  {visibleSeries['유아(여)'] && <Bar dataKey="유아(여)" stackId="age_gender" fill="#fb7185" />}
+                  {visibleSeries['성인(남)'] && <Bar dataKey="성인(남)" stackId="age_gender" fill="#1e3a8a" isAnimationActive={!isDownloading} />}
+                  {visibleSeries['성인(여)'] && <Bar dataKey="성인(여)" stackId="age_gender" fill="#60a5fa" isAnimationActive={!isDownloading} />}
+                  {visibleSeries['청소년(남)'] && <Bar dataKey="청소년(남)" stackId="age_gender" fill="#064e3b" isAnimationActive={!isDownloading} />}
+                  {visibleSeries['청소년(여)'] && <Bar dataKey="청소년(여)" stackId="age_gender" fill="#34d399" isAnimationActive={!isDownloading} />}
+                  {visibleSeries['어린이(남)'] && <Bar dataKey="어린이(남)" stackId="age_gender" fill="#78350f" isAnimationActive={!isDownloading} />}
+                  {visibleSeries['어린이(여)'] && <Bar dataKey="어린이(여)" stackId="age_gender" fill="#fbbf24" isAnimationActive={!isDownloading} />}
+                  {visibleSeries['유아(남)'] && <Bar dataKey="유아(남)" stackId="age_gender" fill="#881337" isAnimationActive={!isDownloading} />}
+                  {visibleSeries['유아(여)'] && <Bar dataKey="유아(여)" stackId="age_gender" fill="#fb7185" isAnimationActive={!isDownloading} />}
 
-                  {visibleSeries.자율관람 && <Bar dataKey="자율관람" stackId="type" fill="#64748b" />}
-                  {visibleSeries.예약관람 && <Bar dataKey="예약관람" stackId="type" fill="#cbd5e1" />}
+                  {visibleSeries.자율관람 && <Bar dataKey="자율관람" stackId="type" fill="#64748b" isAnimationActive={!isDownloading} />}
+                  {visibleSeries.예약관람 && <Bar dataKey="예약관람" stackId="type" fill="#cbd5e1" isAnimationActive={!isDownloading} />}
                 </BarChart>
               ) : (
                 <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -538,25 +569,25 @@ export default function DashboardPage() {
                     itemStyle={{ color: '#0f172a', fontWeight: 'bold' }}
                   />
                   <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingTop: '10px' }} />
-                  {visibleSeries['성인'] && <Line type="monotone" dataKey="성인" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />}
-                  {visibleSeries['청소년'] && <Line type="monotone" dataKey="청소년" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} />}
-                  {visibleSeries['어린이'] && <Line type="monotone" dataKey="어린이" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4 }} />}
-                  {visibleSeries['유아'] && <Line type="monotone" dataKey="유아" stroke="#f43f5e" strokeWidth={3} dot={{ r: 4 }} />}
+                  {visibleSeries['성인'] && <Line type="monotone" dataKey="성인" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={!isDownloading} />}
+                  {visibleSeries['청소년'] && <Line type="monotone" dataKey="청소년" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} isAnimationActive={!isDownloading} />}
+                  {visibleSeries['어린이'] && <Line type="monotone" dataKey="어린이" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4 }} isAnimationActive={!isDownloading} />}
+                  {visibleSeries['유아'] && <Line type="monotone" dataKey="유아" stroke="#f43f5e" strokeWidth={3} dot={{ r: 4 }} isAnimationActive={!isDownloading} />}
                   
-                  {visibleSeries['남성'] && <Line type="monotone" dataKey="남성" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />}
-                  {visibleSeries['여성'] && <Line type="monotone" dataKey="여성" stroke="#0ea5e9" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />}
+                  {visibleSeries['남성'] && <Line type="monotone" dataKey="남성" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={!isDownloading} />}
+                  {visibleSeries['여성'] && <Line type="monotone" dataKey="여성" stroke="#0ea5e9" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={!isDownloading} />}
 
-                  {visibleSeries['성인(남)'] && <Line type="monotone" dataKey="성인(남)" stroke="#1e3a8a" strokeWidth={2} dot={{ r: 3 }} />}
-                  {visibleSeries['성인(여)'] && <Line type="monotone" dataKey="성인(여)" stroke="#60a5fa" strokeWidth={2} dot={{ r: 3 }} />}
-                  {visibleSeries['청소년(남)'] && <Line type="monotone" dataKey="청소년(남)" stroke="#064e3b" strokeWidth={2} dot={{ r: 3 }} />}
-                  {visibleSeries['청소년(여)'] && <Line type="monotone" dataKey="청소년(여)" stroke="#34d399" strokeWidth={2} dot={{ r: 3 }} />}
-                  {visibleSeries['어린이(남)'] && <Line type="monotone" dataKey="어린이(남)" stroke="#78350f" strokeWidth={2} dot={{ r: 3 }} />}
-                  {visibleSeries['어린이(여)'] && <Line type="monotone" dataKey="어린이(여)" stroke="#fbbf24" strokeWidth={2} dot={{ r: 3 }} />}
-                  {visibleSeries['유아(남)'] && <Line type="monotone" dataKey="유아(남)" stroke="#881337" strokeWidth={2} dot={{ r: 3 }} />}
-                  {visibleSeries['유아(여)'] && <Line type="monotone" dataKey="유아(여)" stroke="#fb7185" strokeWidth={2} dot={{ r: 3 }} />}
+                  {visibleSeries['성인(남)'] && <Line type="monotone" dataKey="성인(남)" stroke="#1e3a8a" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={!isDownloading} />}
+                  {visibleSeries['성인(여)'] && <Line type="monotone" dataKey="성인(여)" stroke="#60a5fa" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={!isDownloading} />}
+                  {visibleSeries['청소년(남)'] && <Line type="monotone" dataKey="청소년(남)" stroke="#064e3b" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={!isDownloading} />}
+                  {visibleSeries['청소년(여)'] && <Line type="monotone" dataKey="청소년(여)" stroke="#34d399" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={!isDownloading} />}
+                  {visibleSeries['어린이(남)'] && <Line type="monotone" dataKey="어린이(남)" stroke="#78350f" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={!isDownloading} />}
+                  {visibleSeries['어린이(여)'] && <Line type="monotone" dataKey="어린이(여)" stroke="#fbbf24" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={!isDownloading} />}
+                  {visibleSeries['유아(남)'] && <Line type="monotone" dataKey="유아(남)" stroke="#881337" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={!isDownloading} />}
+                  {visibleSeries['유아(여)'] && <Line type="monotone" dataKey="유아(여)" stroke="#fb7185" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={!isDownloading} />}
 
-                  {visibleSeries.자율관람 && <Line type="monotone" dataKey="자율관람" stroke="#64748b" strokeWidth={2} strokeDasharray="5 5" />}
-                  {visibleSeries.예약관람 && <Line type="monotone" dataKey="예약관람" stroke="#cbd5e1" strokeWidth={2} strokeDasharray="5 5" />}
+                  {visibleSeries.자율관람 && <Line type="monotone" dataKey="자율관람" stroke="#64748b" strokeWidth={2} strokeDasharray="5 5" isAnimationActive={!isDownloading} />}
+                  {visibleSeries.예약관람 && <Line type="monotone" dataKey="예약관람" stroke="#cbd5e1" strokeWidth={2} strokeDasharray="5 5" isAnimationActive={!isDownloading} />}
                 </LineChart>
               )}
             </ResponsiveContainer>
