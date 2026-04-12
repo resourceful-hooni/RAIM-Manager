@@ -6,6 +6,18 @@ import { handleFirestoreError, OperationType } from '@/lib/firestoreUtils';
 
 export type RecordType = 'autonomous' | 'reserved';
 
+export type ActionType = 'increment' | 'decrement' | 'group';
+
+export interface LastAction {
+  type: ActionType;
+  date: string;
+  recordType: RecordType;
+  session: string;
+  category?: keyof Counts;
+  countsToAdd?: Counts;
+  timestamp: number;
+}
+
 export interface Counts {
   adult_m: number;
   adult_f: number;
@@ -40,6 +52,8 @@ interface AppState {
   importRecords: (records: VisitorRecord[]) => Promise<void>;
   getRecord: (date: string, type: RecordType, session: string) => VisitorRecord | undefined;
   getAllRecords: () => VisitorRecord[];
+  lastAction: LastAction | null;
+  undoLastAction: () => Promise<void>;
 }
 
 const createDefaultRecord = (date: string, type: RecordType, session: string): VisitorRecord => ({
@@ -61,6 +75,7 @@ const createDefaultRecord = (date: string, type: RecordType, session: string): V
 export const useStore = create<AppState>((set, get) => ({
   records: [],
   isInitialized: false,
+  lastAction: null,
   
   setRecords: (records) => set({ records, isInitialized: true }),
 
@@ -77,12 +92,19 @@ export const useStore = create<AppState>((set, get) => ({
         updatedAt: Date.now()
       };
       const idx = state.records.findIndex(r => r.id === id);
+      
+      const nextState: Partial<AppState> = {
+        lastAction: { type: 'increment', date, recordType: type, session, category, timestamp: Date.now() }
+      };
+
       if (idx >= 0) {
         const newRecords = [...state.records];
         newRecords[idx] = newRecord;
-        return { records: newRecords };
+        nextState.records = newRecords;
+      } else {
+        nextState.records = [...state.records, newRecord];
       }
-      return { records: [...state.records, newRecord] };
+      return nextState;
     });
 
     try {
@@ -118,7 +140,10 @@ export const useStore = create<AppState>((set, get) => ({
       const idx = state.records.findIndex(r => r.id === id);
       const newRecords = [...state.records];
       newRecords[idx] = newRecord;
-      return { records: newRecords };
+      return { 
+        records: newRecords,
+        lastAction: { type: 'decrement', date, recordType: type, session, category, timestamp: Date.now() }
+      };
     });
 
     try {
@@ -156,12 +181,19 @@ export const useStore = create<AppState>((set, get) => ({
         updatedAt: Date.now()
       };
       const idx = state.records.findIndex(r => r.id === id);
+      
+      const nextState: Partial<AppState> = {
+        lastAction: { type: 'group', date, recordType: type, session, countsToAdd, timestamp: Date.now() }
+      };
+
       if (idx >= 0) {
         const newRecords = [...state.records];
         newRecords[idx] = newRecord;
-        return { records: newRecords };
+        nextState.records = newRecords;
+      } else {
+        nextState.records = [...state.records, newRecord];
       }
-      return { records: [...state.records, newRecord] };
+      return nextState;
     });
 
     try {
@@ -272,6 +304,35 @@ export const useStore = create<AppState>((set, get) => ({
   },
   
   getAllRecords: () => get().records,
+
+  undoLastAction: async () => {
+    const action = get().lastAction;
+    if (!action) return;
+    
+    // Clear it immediately to prevent double click
+    set({ lastAction: null });
+
+    // Only allow undo within 1 minute
+    if (Date.now() - action.timestamp > 60000) {
+      return;
+    }
+
+    if (action.type === 'increment' && action.category) {
+      await get().decrementCount(action.date, action.recordType, action.session, action.category);
+      // Clear the lastAction set by decrementCount
+      set({ lastAction: null });
+    } else if (action.type === 'decrement' && action.category) {
+      await get().incrementCount(action.date, action.recordType, action.session, action.category);
+      set({ lastAction: null });
+    } else if (action.type === 'group' && action.countsToAdd) {
+      const negativeCounts = { ...action.countsToAdd };
+      for (const key in negativeCounts) {
+        negativeCounts[key as keyof Counts] = -negativeCounts[key as keyof Counts];
+      }
+      await get().addGroupCount(action.date, action.recordType, action.session, negativeCounts, '');
+      set({ lastAction: null });
+    }
+  }
 }));
 
 // Initialize listener

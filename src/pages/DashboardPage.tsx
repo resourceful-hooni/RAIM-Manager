@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
-import { format, subDays } from 'date-fns';
+import { format, subDays, subMonths, subYears } from 'date-fns';
 import { useStore } from '@/store/useStore';
 import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { Users, Calendar, TrendingUp, AlertCircle, Download, CheckSquare, Square, BarChart2 } from 'lucide-react';
+import { Users, Calendar, TrendingUp, AlertCircle, Download, CheckSquare, Square, BarChart2, FileText } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { saveAs } from 'file-saver';
+import jsPDF from 'jspdf';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#f43f5e'];
 const PIE_COLORS = ['#8b5cf6', '#0ea5e9'];
@@ -71,6 +72,34 @@ export default function DashboardPage() {
     }, 100);
   };
 
+  const handleDownloadPDF = async () => {
+    setIsDownloading(true);
+    setTimeout(async () => {
+      const dashboardElement = document.getElementById('dashboard-content');
+      if (dashboardElement) {
+        try {
+          const canvas = await html2canvas(dashboardElement, {
+            scale: 2,
+            backgroundColor: '#f8fafc',
+            useCORS: true,
+            logging: false,
+          });
+          
+          const imgData = canvas.toDataURL('image/png');
+          const pdf = new jsPDF('p', 'mm', 'a4');
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+          
+          pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+          pdf.save(`${date.replace(/-/g, '')}_방문객통계보고서.pdf`);
+        } catch (error) {
+          console.error('Failed to generate PDF', error);
+        }
+      }
+      setIsDownloading(false);
+    }, 100);
+  };
+
   const allRecords = getAllRecords();
 
   const filteredRecords = useMemo(() => {
@@ -91,7 +120,27 @@ export default function DashboardPage() {
     }
   }, [date, allRecords, viewMode]);
 
-  const stats = useMemo(() => {
+  const prevFilteredRecords = useMemo(() => {
+    if (viewMode === 'daily') {
+      const prevDate = format(subDays(new Date(date), 1), 'yyyy-MM-dd');
+      return allRecords.filter(r => r.date === prevDate);
+    } else if (viewMode === 'weekly') {
+      const end = subDays(new Date(date), 7);
+      const start = subDays(new Date(date), 13);
+      return allRecords.filter(r => {
+        const d = new Date(r.date);
+        return d >= start && d <= end;
+      });
+    } else if (viewMode === 'monthly') {
+      const prevMonth = format(subMonths(new Date(date), 1), 'yyyy-MM');
+      return allRecords.filter(r => r.date.startsWith(prevMonth));
+    } else {
+      const prevYear = format(subYears(new Date(date), 1), 'yyyy');
+      return allRecords.filter(r => r.date.startsWith(prevYear));
+    }
+  }, [date, allRecords, viewMode]);
+
+  const calculateStats = (records: any[]) => {
     let total = 0;
     let autonomous = 0;
     let reserved = 0;
@@ -102,7 +151,7 @@ export default function DashboardPage() {
       '유아(남)': 0, '유아(여)': 0,
     };
 
-    filteredRecords.forEach(r => {
+    records.forEach(r => {
       const safeCounts = {
         adult_m: r.counts.adult_m || 0, adult_f: r.counts.adult_f || 0,
         youth_m: r.counts.youth_m || 0, youth_f: r.counts.youth_f || 0,
@@ -125,7 +174,16 @@ export default function DashboardPage() {
     });
 
     return { total, autonomous, reserved, breakdown };
-  }, [filteredRecords]);
+  };
+
+  const stats = useMemo(() => calculateStats(filteredRecords), [filteredRecords]);
+  const prevStats = useMemo(() => calculateStats(prevFilteredRecords), [prevFilteredRecords]);
+
+  const getPercentageChange = (current: number, previous: number) => {
+    if (previous === 0) return current > 0 ? '+100%' : '0%';
+    const change = ((current - previous) / previous) * 100;
+    return `${change > 0 ? '+' : ''}${change.toFixed(1)}%`;
+  };
 
   const chartData = useMemo(() => {
     if (viewMode === 'daily') {
@@ -314,7 +372,7 @@ export default function DashboardPage() {
   }, [allRecords]);
 
   return (
-    <div className="p-4 space-y-6 max-w-2xl mx-auto">
+    <div id="dashboard-content" className="p-4 space-y-6 max-w-2xl mx-auto">
       {/* Predictive Dashboard Card */}
       {prediction && (
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 shadow-sm relative overflow-hidden">
@@ -365,6 +423,14 @@ export default function DashboardPage() {
             max={viewMode === 'yearly' ? "2030" : undefined}
             className="bg-transparent border-none px-2 py-2 text-slate-900 focus:outline-none flex-1 text-sm font-bold"
           />
+          <button
+            onClick={handleDownloadPDF}
+            className="flex items-center space-x-1 px-3 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm"
+            title="PDF 보고서 다운로드"
+          >
+            <FileText className="w-4 h-4" />
+            <span>PDF</span>
+          </button>
         </div>
       </div>
 
@@ -375,7 +441,15 @@ export default function DashboardPage() {
             <Users className="w-5 h-5 text-blue-500" />
             <span className="text-sm font-bold">총 방문객</span>
           </div>
-          <span className="text-5xl font-black text-slate-900 tracking-tighter">{stats.total} <span className="text-xl text-slate-400 font-bold tracking-normal">명</span></span>
+          <div className="flex items-end space-x-3">
+            <span className="text-5xl font-black text-slate-900 tracking-tighter">{stats.total} <span className="text-xl text-slate-400 font-bold tracking-normal">명</span></span>
+            <span className={cn(
+              "text-xs font-bold px-2 py-1 rounded-lg mb-2",
+              stats.total >= prevStats.total ? "bg-green-100 text-green-700" : "bg-rose-100 text-rose-700"
+            )}>
+              {viewMode === 'daily' ? '어제' : viewMode === 'weekly' ? '지난주' : viewMode === 'monthly' ? '지난달' : '작년'} 대비 {getPercentageChange(stats.total, prevStats.total)}
+            </span>
+          </div>
         </div>
         
         <div className="bg-white border border-slate-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)] rounded-3xl p-5 flex items-center justify-center relative overflow-hidden group">

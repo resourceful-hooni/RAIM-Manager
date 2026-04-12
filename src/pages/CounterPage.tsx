@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { useStore, RecordType, Counts } from '@/store/useStore';
 import { vibrate, cn } from '@/lib/utils';
-import { RotateCcw, Plus, Minus, FileText, Clock, Users } from 'lucide-react';
+import { RotateCcw, Plus, Minus, FileText, Clock, Users, Undo2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 const RESERVED_SESSIONS = ['1회차 (10:00)', '2회차 (10:30)', '3회차 (13:00)', '4회차 (13:30)', '5회차 (15:30)', '6회차 (16:00)', '단체'];
@@ -83,7 +83,7 @@ export default function CounterPage() {
   const [groupCounts, setGroupCounts] = useState<Counts>(INITIAL_COUNTS);
   const [groupMemo, setGroupMemo] = useState('');
   
-  const { getRecord, incrementCount, decrementCount, resetCounts, updateMemo, addGroupCount } = useStore();
+  const { getRecord, incrementCount, decrementCount, resetCounts, updateMemo, addGroupCount, lastAction, undoLastAction } = useStore();
   
   // Auto-sync effect
   useEffect(() => {
@@ -346,6 +346,26 @@ export default function CounterPage() {
           <span>현재 세션 초기화</span>
         </button>
       </div>
+
+      {/* Undo Floating Button */}
+      <AnimatePresence>
+        {lastAction && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-24 left-0 right-0 flex justify-center z-50 pointer-events-none"
+          >
+            <button
+              onClick={undoLastAction}
+              className="pointer-events-auto flex items-center space-x-2 bg-slate-800 text-white px-5 py-3 rounded-full shadow-xl hover:bg-slate-700 active:scale-95 transition-all"
+            >
+              <Undo2 className="w-4 h-4" />
+              <span className="text-sm font-medium">방금 입력 취소</span>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Group Entry Modal */}
       <AnimatePresence>
