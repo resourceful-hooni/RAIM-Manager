@@ -144,6 +144,13 @@ export default function CounterPage() {
     setSession(e.target.value);
   };
 
+  const handleTypeChange = (newType: RecordType) => {
+    setType(newType);
+    if (!isAutoSync) {
+      setSession(newType === 'autonomous' ? AUTONOMOUS_HOURS[0] : RESERVED_SESSIONS[0]);
+    }
+  };
+
   const handleGroupSubmit = () => {
     const total = (Object.values(groupCounts) as number[]).reduce((a, b) => a + b, 0);
     if (total === 0) {
@@ -183,7 +190,7 @@ export default function CounterPage() {
               "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all active:scale-95",
               type === 'autonomous' ? "bg-white text-blue-600 shadow-sm border border-slate-200/60" : "text-slate-500 hover:text-slate-700"
             )}
-            onClick={() => setType('autonomous')}
+            onClick={() => handleTypeChange('autonomous')}
           >
             자율관람 (Autonomous)
           </button>
@@ -192,7 +199,7 @@ export default function CounterPage() {
               "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all active:scale-95",
               type === 'reserved' ? "bg-white text-blue-600 shadow-sm border border-slate-200/60" : "text-slate-500 hover:text-slate-700"
             )}
-            onClick={() => setType('reserved')}
+            onClick={() => handleTypeChange('reserved')}
           >
             예약관람 (Reserved)
           </button>

@@ -198,7 +198,15 @@ export default function DashboardPage() {
         if (r.type === 'autonomous') hourlyMap[hourStr].자율관람 += total;
         else hourlyMap[hourStr].예약관람 += total;
       });
-      return Object.values(hourlyMap).sort((a, b) => {
+      return Object.values(hourlyMap).map(item => {
+        const cleanedItem: any = { name: item.name };
+        Object.keys(item).forEach(key => {
+          if (key !== 'name' && item[key] > 0) {
+            cleanedItem[key] = item[key];
+          }
+        });
+        return cleanedItem;
+      }).sort((a, b) => {
         if (a.name === '단체') return 1;
         if (b.name === '단체') return -1;
         return parseInt(a.name) - parseInt(b.name);
@@ -249,7 +257,15 @@ export default function DashboardPage() {
       if (r.type === 'autonomous') dailyMap[day].자율관람 += total;
       else dailyMap[day].예약관람 += total;
     });
-    return Object.values(dailyMap).sort((a, b) => a.name.localeCompare(b.name));
+    return Object.values(dailyMap).map(item => {
+      const cleanedItem: any = { name: item.name };
+      Object.keys(item).forEach(key => {
+        if (key !== 'name' && item[key] > 0) {
+          cleanedItem[key] = item[key];
+        }
+      });
+      return cleanedItem;
+    }).sort((a, b) => a.name.localeCompare(b.name));
   }, [filteredRecords, viewMode]);
   const pieData = [
     { name: '남성', value: stats.breakdown['성인(남)'] + stats.breakdown['청소년(남)'] + stats.breakdown['어린이(남)'] + stats.breakdown['유아(남)'] },
