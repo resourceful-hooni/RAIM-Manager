@@ -6,7 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Users, Calendar, TrendingUp, AlertCircle, Download, CheckSquare, Square, BarChart2, FileText } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { saveAs } from 'file-saver';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#f43f5e'];
 const PIE_COLORS = ['#8b5cf6', '#0ea5e9'];
@@ -43,8 +43,7 @@ export default function DashboardPage() {
           backgroundColor: '#ffffff', 
           scale: 2,
           logging: false,
-          useCORS: true,
-          scrollY: -window.scrollY
+          useCORS: true
         });
         
         // Restore original dimensions
@@ -56,9 +55,9 @@ export default function DashboardPage() {
             saveAs(blob, `${filename}.png`);
           }
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error generating chart image:", error);
-        alert("차트 이미지 저장 중 오류가 발생했습니다.");
+        alert(`차트 이미지 저장 중 오류가 발생했습니다: ${error.message || error}`);
       }
     }
   };
@@ -89,8 +88,7 @@ export default function DashboardPage() {
           scale: 2,
           backgroundColor: '#f8fafc',
           useCORS: true,
-          logging: false,
-          scrollY: -window.scrollY
+          logging: false
         });
         
         // Restore dimensions
@@ -110,9 +108,9 @@ export default function DashboardPage() {
         
         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
         pdf.save(`${date.replace(/-/g, '')}_방문객통계보고서.pdf`);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to generate PDF', error);
-        alert("PDF 생성 중 오류가 발생했습니다.");
+        alert(`PDF 생성 중 오류가 발생했습니다: ${error.message || error}`);
       }
     }
   };
