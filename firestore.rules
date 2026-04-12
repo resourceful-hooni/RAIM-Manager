@@ -27,6 +27,13 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isAdmin() {
+      // 보안 강화: 승인된 관리자 이메일만 접근 가능하도록 제한
+      return isAuthenticated() && (
+        request.auth.token.email == 'raimseoul08@gmail.com'
+      );
+    }
+
     function hasRequiredFields(fields) {
       return request.resource.data.keys().hasAll(fields);
     }
@@ -60,17 +67,17 @@ service cloud.firestore {
     // ===============================================================
 
     match /records/{recordId} {
-      // Allow read for any authenticated user (admin/staff)
-      allow read: if isAuthenticated();
+      // Allow read for admin only
+      allow read: if isAdmin();
       
-      // Allow create if authenticated and data is valid
-      allow create: if isAuthenticated() && isValidRecord(request.resource.data);
+      // Allow create if admin and data is valid
+      allow create: if isAdmin() && isValidRecord(request.resource.data);
       
-      // Allow update if authenticated and data is valid
-      allow update: if isAuthenticated() && isValidRecord(request.resource.data);
+      // Allow update if admin and data is valid
+      allow update: if isAdmin() && isValidRecord(request.resource.data);
       
-      // Allow delete if authenticated
-      allow delete: if isAuthenticated();
+      // Allow delete if admin
+      allow delete: if isAdmin();
     }
   }
 }

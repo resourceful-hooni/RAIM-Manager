@@ -358,7 +358,7 @@ export default function CounterPage() {
           >
             <button
               onClick={undoLastAction}
-              className="pointer-events-auto flex items-center space-x-2 bg-slate-800 text-white px-5 py-3 rounded-full shadow-xl hover:bg-slate-700 active:scale-95 transition-all"
+              className="pointer-events-auto flex items-center space-x-2 bg-slate-900/80 backdrop-blur-md text-white px-5 py-3 rounded-full shadow-xl hover:bg-slate-800 active:scale-95 transition-all border border-slate-700/50"
             >
               <Undo2 className="w-4 h-4" />
               <span className="text-sm font-medium">방금 입력 취소</span>
