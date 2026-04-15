@@ -4,7 +4,7 @@ import { useStore } from '@/store/useStore';
 import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { Users, Calendar, TrendingUp, AlertCircle, Download, CheckSquare, Square, BarChart2, FileText } from 'lucide-react';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
 
@@ -39,22 +39,18 @@ export default function DashboardPage() {
         chartElement.style.width = `${chartElement.offsetWidth}px`;
         chartElement.style.height = `${chartElement.offsetHeight}px`;
 
-        const canvas = await html2canvas(chartElement, { 
+        const dataUrl = await toPng(chartElement, { 
           backgroundColor: '#ffffff', 
-          scale: 2,
-          logging: false,
-          useCORS: true
+          pixelRatio: 2
         });
         
         // Restore original dimensions
         chartElement.style.width = originalWidth;
         chartElement.style.height = originalHeight;
 
-        canvas.toBlob((blob) => {
-          if (blob) {
-            saveAs(blob, `${filename}.png`);
-          }
-        });
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        saveAs(blob, `${filename}.png`);
       } catch (error: any) {
         console.error("Error generating chart image:", error);
         alert(`차트 이미지 저장 중 오류가 발생했습니다: ${error.message || error}`);
@@ -84,11 +80,9 @@ export default function DashboardPage() {
           mainChartContainer.style.height = `${mainChartContainer.offsetHeight}px`;
         }
 
-        const canvas = await html2canvas(dashboardElement, {
-          scale: 2,
-          backgroundColor: '#f8fafc',
-          useCORS: true,
-          logging: false
+        const dataUrl = await toPng(dashboardElement, {
+          pixelRatio: 2,
+          backgroundColor: '#f8fafc'
         });
         
         // Restore dimensions
@@ -101,10 +95,15 @@ export default function DashboardPage() {
           mainChartContainer.style.height = originalMainHeight || '';
         }
 
-        const imgData = canvas.toDataURL('image/png');
+        const imgData = dataUrl;
         const pdf = new jsPDF('p', 'mm', 'a4');
+        
+        const img = new Image();
+        img.src = imgData;
+        await new Promise((resolve) => { img.onload = resolve; });
+
         const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        const pdfHeight = (img.height * pdfWidth) / img.width;
         
         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
         pdf.save(`${date.replace(/-/g, '')}_방문객통계보고서.pdf`);
