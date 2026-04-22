@@ -90,7 +90,7 @@ export default function Layout() {
             </div>
           ) : (
             <div className="flex items-center space-x-1.5 bg-rose-50 border border-rose-100 px-2.5 py-1 rounded-full">
-              <div className="w-1.5 h-1.5 bg-rose-500 rounded-full"></div>
+              <WifiOff className="w-3 h-3 text-rose-500" />
               <span className="text-rose-700 font-medium">Offline</span>
             </div>
           )}

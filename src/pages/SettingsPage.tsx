@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import { useStore } from '@/store/useStore';
-import { Download, Cloud, Info, Calendar, FileSpreadsheet, Upload, AlertTriangle, FileUp } from 'lucide-react';
+import { Download, Cloud, Info, Calendar, FileSpreadsheet, Upload, AlertTriangle, FileUp, CalendarRange, CloudOff } from 'lucide-react';
 import { format } from 'date-fns';
 import { exportToXLSX } from '@/lib/exportUtils';
 import { parseVisitorFile } from '@/lib/importUtils';
 import { cn } from '@/lib/utils';
 
 export default function SettingsPage() {
-  const { getAllRecords, importRecords } = useStore();
+  const { getAllRecords, importRecords, pendingSyncCount } = useStore();
   const [exportDate, setExportDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [exportMonth, setExportMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [isImporting, setIsImporting] = useState(false);
 
-  const handleExportXLSX = () => {
+  const handleExportXLSX_Daily = () => {
     const allRecords = getAllRecords();
     const records = allRecords.filter(r => r.date === exportDate);
     
@@ -20,7 +21,19 @@ export default function SettingsPage() {
       return;
     }
 
-    exportToXLSX(exportDate, allRecords);
+    exportToXLSX(exportDate, allRecords, 'daily');
+  };
+
+  const handleExportXLSX_Monthly = () => {
+    const allRecords = getAllRecords();
+    const records = allRecords.filter(r => r.date.startsWith(exportMonth));
+    
+    if (records.length === 0) {
+      alert(`${exportMonth} 월에 내보낼 데이터가 없습니다.`);
+      return;
+    }
+
+    exportToXLSX(exportMonth, allRecords, 'monthly');
   };
 
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,7 +63,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="p-4 space-y-4 max-w-2xl mx-auto">
+    <div className="p-4 space-y-4 max-w-2xl mx-auto pb-24">
       <h2 className="text-xl font-extrabold mb-6 text-slate-900 tracking-tight ml-1">설정 (Settings)</h2>
 
       <div className="space-y-4">
@@ -61,28 +74,52 @@ export default function SettingsPage() {
             데이터 내보내기 (XLSX)
           </h3>
           <p className="text-xs font-medium text-slate-500 mb-5 leading-relaxed">
-            선택한 날짜의 방문객 데이터를 엑셀(XLSX) 파일로 다운로드합니다.
+            원하시는 옵션(하루 전체 또는 월간 전체)을 선택하여 방문객 데이터를 엑셀로 다운로드합니다.
           </p>
           
-          <div className="flex space-x-2 mb-5">
-            <div className="flex-1 flex items-center space-x-3 bg-slate-50 border border-slate-200/60 rounded-2xl px-4 py-3 shadow-inner">
-              <Calendar className="w-5 h-5 text-slate-400" />
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* Daily Export Box */}
+            <div className="flex-1 bg-slate-50 border border-slate-100 rounded-2xl p-4">
+              <div className="flex items-center space-x-2 mb-3 text-slate-700">
+                <Calendar className="w-4 h-4" />
+                <span className="text-xs font-bold">일간 다운로드</span>
+              </div>
               <input
                 type="date"
                 value={exportDate}
                 onChange={(e) => setExportDate(e.target.value)}
-                className="bg-transparent border-none text-sm font-bold text-slate-900 focus:outline-none w-full"
+                className="w-full bg-white border border-slate-200/80 rounded-xl px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none mb-3 shadow-sm"
               />
+              <button
+                onClick={handleExportXLSX_Daily}
+                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 flex items-center justify-center space-x-2"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>데이터 다운로드</span>
+              </button>
+            </div>
+
+            {/* Monthly Export Box */}
+            <div className="flex-1 bg-slate-50 border border-slate-100 rounded-2xl p-4">
+              <div className="flex items-center space-x-2 mb-3 text-slate-700">
+                <CalendarRange className="w-4 h-4" />
+                <span className="text-xs font-bold">월간 전체(보고용)</span>
+              </div>
+              <input
+                type="month"
+                value={exportMonth}
+                onChange={(e) => setExportMonth(e.target.value)}
+                className="w-full bg-white border border-slate-200/80 rounded-xl px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none mb-3 shadow-sm"
+              />
+              <button
+                onClick={handleExportXLSX_Monthly}
+                className="w-full bg-teal-500 hover:bg-teal-600 text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 flex items-center justify-center space-x-2"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>월간 통합 다운로드</span>
+              </button>
             </div>
           </div>
-
-          <button
-            onClick={handleExportXLSX}
-            className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white py-3.5 rounded-2xl text-sm font-bold transition-all shadow-md hover:shadow-lg active:scale-95 flex items-center justify-center space-x-2"
-          >
-            <Download className="w-4 h-4" />
-            <span>{exportDate} 엑셀 다운로드</span>
-          </button>
         </div>
 
         <div className="bg-white border border-slate-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)] rounded-3xl p-6 relative overflow-hidden group">
@@ -121,17 +158,45 @@ export default function SettingsPage() {
           <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500 opacity-80" />
           <h3 className="text-sm font-extrabold text-slate-800 mb-4 flex items-center tracking-tight">
             <Cloud className="w-5 h-5 mr-2 text-blue-500" />
-            동기화 상태
+            동기화 상태 (서버 연동)
           </h3>
-          <div className="flex items-center justify-between text-sm bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
-            <span className="text-slate-600 font-bold">서버 연결 상태</span>
-            <div className="flex items-center space-x-2 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">
-              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-              <span className="text-emerald-700 font-bold text-xs">온라인 (자동 동기화 중)</span>
+          
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-sm bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+              <span className="text-slate-600 font-bold">네트워크 연결</span>
+              {navigator.onLine ? (
+                <div className="flex items-center space-x-2 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 shadow-sm">
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                  <span className="text-emerald-700 font-bold text-xs">온라인</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2 bg-rose-50 px-3 py-1.5 rounded-full border border-rose-100 shadow-sm">
+                  <CloudOff className="w-3 h-3 text-rose-500" />
+                  <span className="text-rose-700 font-bold text-xs">오프라인</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between text-sm bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+              <div className="flex flex-col">
+                <span className="text-slate-600 font-bold">오프라인 대기열</span>
+                <span className="text-[10px] font-medium text-slate-400 mt-0.5">서버로 전송되지 못한 데이터</span>
+              </div>
+              {pendingSyncCount > 0 ? (
+                <div className="flex items-center space-x-1.5 bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-xl shadow-sm">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                  <span className="text-amber-700 font-black text-sm">{pendingSyncCount}건 대기중</span>
+                </div>
+              ) : (
+                <div className="bg-slate-200/50 text-slate-500 px-3 py-1.5 rounded-xl font-bold text-xs border border-slate-200">
+                  모두 전송됨
+                </div>
+              )}
             </div>
           </div>
+
           <p className="text-[11px] font-medium text-slate-400 mt-4 leading-relaxed px-1">
-            오프라인 상태에서는 기기에 안전하게 임시 저장되며, 네트워크 연결 시 자동으로 서버와 동기화됩니다.
+            인터넷이 끊긴 오프라인 상태에서도 기기에 안전하게 임시 저장되며, 네트워크가 다시 복구되면 <strong className="text-slate-600">서버로 자동 동기화</strong>됩니다.
           </p>
         </div>
 
@@ -144,7 +209,7 @@ export default function SettingsPage() {
           <div className="space-y-3 text-sm bg-slate-50 p-4 rounded-2xl border border-slate-100">
             <div className="flex justify-between items-center">
               <span className="text-slate-500 font-bold">버전</span>
-              <span className="text-slate-900 font-black bg-white px-2 py-1 rounded-lg border border-slate-200/60 shadow-sm text-xs">1.0.0</span>
+              <span className="text-slate-900 font-black bg-white px-2 py-1 rounded-lg border border-slate-200/60 shadow-sm text-xs">1.2.0</span>
             </div>
             <div className="h-px bg-slate-200/60 w-full" />
             <div className="flex justify-between items-center">

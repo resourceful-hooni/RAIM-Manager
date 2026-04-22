@@ -256,9 +256,15 @@ export default function CounterPage() {
             <div className={cn("absolute top-0 left-0 right-0 h-1.5 opacity-90 transition-all group-hover:h-2", cat.color)} />
             <div className="flex justify-between items-center mb-3 mt-1">
               <span className="text-slate-800 font-extrabold text-xs tracking-tight">{cat.label.split(' ')[0]}</span>
-              <span className="text-xl font-black text-slate-900 tracking-tighter">
+              <motion.span 
+                key={(counts[cat.fields[0].id] as number) + (counts[cat.fields[1].id] as number)}
+                initial={{ scale: 1.3, color: '#3b82f6' }}
+                animate={{ scale: 1, color: '#0f172a' }}
+                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                className="text-xl font-black text-slate-900 tracking-tighter"
+              >
                 {(counts[cat.fields[0].id] as number) + (counts[cat.fields[1].id] as number)}
-              </span>
+              </motion.span>
             </div>
             
             <div className="space-y-3">
@@ -266,20 +272,28 @@ export default function CounterPage() {
                 <div key={field.id} className="space-y-1.5">
                   <div className="flex justify-between items-end px-1">
                     <span className="text-[10px] font-semibold text-slate-500">{field.label}</span>
-                    <span className="text-sm font-bold text-slate-900">{counts[field.id]}</span>
+                    <motion.span 
+                      key={counts[field.id]}
+                      initial={{ scale: 1.4, color: '#3b82f6' }}
+                      animate={{ scale: 1, color: '#0f172a' }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                      className="text-sm font-bold text-slate-900"
+                    >
+                      {counts[field.id]}
+                    </motion.span>
                   </div>
                   <div className="flex space-x-1.5">
                     <motion.button
-                      whileTap={{ scale: 0.9 }}
+                      whileTap={{ scale: 0.85 }}
                       onClick={() => handleDecrement(field.id)}
-                      className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-400 rounded-xl py-1.5 flex items-center justify-center transition-all border border-slate-200/60"
+                      className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-400 rounded-xl py-1.5 flex items-center justify-center transition-all border border-slate-200/60 shadow-sm active:shadow-inner"
                     >
                       <Minus className="w-3.5 h-3.5" />
                     </motion.button>
                     <motion.button
-                      whileTap={{ scale: 0.95 }}
+                      whileTap={{ scale: 0.9 }}
                       onClick={() => handleIncrement(field.id)}
-                      className={cn("flex-[2] text-white rounded-xl py-1.5 flex items-center justify-center transition-all shadow-sm hover:shadow active:shadow-none", cat.color)}
+                      className={cn("flex-[2] text-white rounded-xl py-1.5 flex items-center justify-center transition-all shadow-md active:shadow-inner", cat.color)}
                     >
                       <Plus className="w-4 h-4" />
                     </motion.button>
@@ -305,19 +319,26 @@ export default function CounterPage() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-xl font-black text-slate-900 w-8 text-center">{counts.noShow}</span>
+              <motion.span 
+                key={counts.noShow}
+                initial={{ scale: 1.4, color: '#e11d48' }}
+                animate={{ scale: 1, color: '#0f172a' }}
+                className="text-xl font-black text-slate-900 w-8 text-center"
+              >
+                {counts.noShow}
+              </motion.span>
               <div className="flex space-x-2">
                 <motion.button
-                  whileTap={{ scale: 0.9 }}
+                  whileTap={{ scale: 0.85 }}
                   onClick={() => handleDecrement('noShow')}
-                  className="bg-slate-50 hover:bg-slate-100 text-slate-400 rounded-xl p-2 transition-all border border-slate-200/60"
+                  className="bg-slate-50 hover:bg-slate-100 text-slate-400 rounded-xl p-2 transition-all border border-slate-200/60 shadow-sm active:shadow-inner"
                 >
                   <Minus className="w-4 h-4" />
                 </motion.button>
                 <motion.button
-                  whileTap={{ scale: 0.95 }}
+                  whileTap={{ scale: 0.9 }}
                   onClick={() => handleIncrement('noShow')}
-                  className="bg-slate-800 hover:bg-slate-900 text-white rounded-xl p-2 transition-all shadow-sm"
+                  className="bg-slate-800 hover:bg-slate-900 text-white rounded-xl p-2 transition-all shadow-md active:shadow-inner"
                 >
                   <Plus className="w-4 h-4" />
                 </motion.button>

@@ -43,7 +43,8 @@ export interface VisitorRecord {
 interface AppState {
   records: VisitorRecord[];
   isInitialized: boolean;
-  setRecords: (records: VisitorRecord[]) => void;
+  pendingSyncCount: number;
+  setRecords: (records: VisitorRecord[], pendingCount?: number) => void;
   incrementCount: (date: string, type: RecordType, session: string, category: keyof Counts) => Promise<void>;
   decrementCount: (date: string, type: RecordType, session: string, category: keyof Counts) => Promise<void>;
   addGroupCount: (date: string, type: RecordType, session: string, countsToAdd: Counts, memoToAdd: string) => Promise<void>;
@@ -75,9 +76,10 @@ const createDefaultRecord = (date: string, type: RecordType, session: string): V
 export const useStore = create<AppState>((set, get) => ({
   records: [],
   isInitialized: false,
+  pendingSyncCount: 0,
   lastAction: null,
   
-  setRecords: (records) => set({ records, isInitialized: true }),
+  setRecords: (records, pendingCount = 0) => set({ records, pendingSyncCount: pendingCount, isInitialized: true }),
 
   incrementCount: async (date, type, session, category) => {
     const id = `${date}-${type}-${session}`;
@@ -356,18 +358,22 @@ export function useFirestoreSync() {
       const unsubscribeAuth = auth.onAuthStateChanged(user => {
         if (user) {
           const q = query(collection(db, 'records'));
-          unsubscribe = onSnapshot(q, (snapshot) => {
+          unsubscribe = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
             const records: VisitorRecord[] = [];
+            let pendingWritesCount = 0;
             snapshot.forEach(doc => {
               records.push(doc.data() as VisitorRecord);
+              if (doc.metadata.hasPendingWrites) {
+                pendingWritesCount++;
+              }
             });
-            setRecords(records);
+            setRecords(records, pendingWritesCount);
           }, (error) => {
             handleFirestoreError(error, OperationType.LIST, 'records');
           });
         } else {
           if (unsubscribe) unsubscribe();
-          setRecords([]);
+          setRecords([], 0);
         }
       });
 
