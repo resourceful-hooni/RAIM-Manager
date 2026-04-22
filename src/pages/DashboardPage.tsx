@@ -14,20 +14,9 @@ const PIE_COLORS = ['#8b5cf6', '#0ea5e9'];
 export default function DashboardPage() {
   const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [visibleSeries, setVisibleSeries] = useState({
-    '성인': true, '청소년': true, '어린이': true, '유아': true,
-    '남성': false, '여성': false,
-    '성인(남)': true, '성인(여)': true,
-    '청소년(남)': true, '청소년(여)': true,
-    '어린이(남)': true, '어린이(여)': true,
-    '유아(남)': true, '유아(여)': true,
-    '자율관람': true, '예약관람': true
-  });
+  const [chartFilterType, setChartFilterType] = useState<'all' | 'autonomous' | 'reserved'>('all');
+  const [chartDisplayMode, setChartDisplayMode] = useState<'total' | 'age' | 'gender' | 'detailed'>('age');
   const { getAllRecords } = useStore();
-
-  const toggleSeries = (key: keyof typeof visibleSeries) => {
-    setVisibleSeries(prev => ({ ...prev, [key]: !prev[key] }));
-  };
 
   const handleDownloadChart = async (chartId: string, filename: string) => {
     const chartElement = document.getElementById(chartId);
@@ -200,23 +189,28 @@ export default function DashboardPage() {
   };
 
   const chartData = useMemo(() => {
+    const chartFilteredRecords = filteredRecords.filter(r => {
+      if (chartFilterType === 'all') return true;
+      return r.type === chartFilterType;
+    });
+
     if (viewMode === 'daily') {
       const hourlyMap: Record<string, any> = {};
       // Initialize common hours
       for (let i = 10; i <= 17; i++) {
         hourlyMap[`${i}시`] = { 
           name: `${i}시`, 
+          '총합계': 0,
           '성인': 0, '청소년': 0, '어린이': 0, '유아': 0,
           '남성': 0, '여성': 0,
           '성인(남)': 0, '성인(여)': 0,
           '청소년(남)': 0, '청소년(여)': 0,
           '어린이(남)': 0, '어린이(여)': 0,
           '유아(남)': 0, '유아(여)': 0,
-          자율관람: 0, 예약관람: 0 
         };
       }
       
-      filteredRecords.forEach(r => {
+      chartFilteredRecords.forEach(r => {
         let hourStr = '';
         if (r.session.includes('시')) {
           hourStr = r.session;
@@ -232,13 +226,13 @@ export default function DashboardPage() {
         if (!hourlyMap[hourStr]) {
           hourlyMap[hourStr] = { 
             name: hourStr, 
+            '총합계': 0,
             '성인': 0, '청소년': 0, '어린이': 0, '유아': 0,
             '남성': 0, '여성': 0,
             '성인(남)': 0, '성인(여)': 0,
             '청소년(남)': 0, '청소년(여)': 0,
             '어린이(남)': 0, '어린이(여)': 0,
             '유아(남)': 0, '유아(여)': 0,
-            자율관람: 0, 예약관람: 0 
           };
         }
         
@@ -250,6 +244,7 @@ export default function DashboardPage() {
         };
         const total = (Object.values(safeCounts) as number[]).reduce((a, b) => a + b, 0);
         
+        hourlyMap[hourStr]['총합계'] += total;
         hourlyMap[hourStr]['성인'] += safeCounts.adult_m + safeCounts.adult_f;
         hourlyMap[hourStr]['청소년'] += safeCounts.youth_m + safeCounts.youth_f;
         hourlyMap[hourStr]['어린이'] += safeCounts.child_m + safeCounts.child_f;
@@ -266,9 +261,6 @@ export default function DashboardPage() {
         hourlyMap[hourStr]['어린이(여)'] += safeCounts.child_f;
         hourlyMap[hourStr]['유아(남)'] += safeCounts.infant_m;
         hourlyMap[hourStr]['유아(여)'] += safeCounts.infant_f;
-
-        if (r.type === 'autonomous') hourlyMap[hourStr].자율관람 += total;
-        else hourlyMap[hourStr].예약관람 += total;
       });
       return Object.values(hourlyMap).map(item => {
         const cleanedItem: any = { name: item.name };
@@ -287,18 +279,18 @@ export default function DashboardPage() {
 
     // Weekly/Monthly: Use Line Chart data
     const dailyMap: Record<string, any> = {};
-    filteredRecords.forEach(r => {
+    chartFilteredRecords.forEach(r => {
       const day = r.date;
       if (!dailyMap[day]) {
         dailyMap[day] = { 
           name: format(new Date(day), 'MM/dd'), 
+          '총합계': 0,
           '성인': 0, '청소년': 0, '어린이': 0, '유아': 0,
           '남성': 0, '여성': 0,
           '성인(남)': 0, '성인(여)': 0,
           '청소년(남)': 0, '청소년(여)': 0,
           '어린이(남)': 0, '어린이(여)': 0,
           '유아(남)': 0, '유아(여)': 0,
-          자율관람: 0, 예약관람: 0 
         };
       }
       const safeCounts = {
@@ -309,6 +301,7 @@ export default function DashboardPage() {
       };
       const total = (Object.values(safeCounts) as number[]).reduce((a, b) => a + b, 0);
       
+      dailyMap[day]['총합계'] += total;
       dailyMap[day]['성인'] += safeCounts.adult_m + safeCounts.adult_f;
       dailyMap[day]['청소년'] += safeCounts.youth_m + safeCounts.youth_f;
       dailyMap[day]['어린이'] += safeCounts.child_m + safeCounts.child_f;
@@ -325,9 +318,6 @@ export default function DashboardPage() {
       dailyMap[day]['어린이(여)'] += safeCounts.child_f;
       dailyMap[day]['유아(남)'] += safeCounts.infant_m;
       dailyMap[day]['유아(여)'] += safeCounts.infant_f;
-
-      if (r.type === 'autonomous') dailyMap[day].자율관람 += total;
-      else dailyMap[day].예약관람 += total;
     });
     return Object.values(dailyMap).map(item => {
       const cleanedItem: any = { name: item.name };
@@ -338,7 +328,7 @@ export default function DashboardPage() {
       });
       return cleanedItem;
     }).sort((a, b) => a.name.localeCompare(b.name));
-  }, [filteredRecords, viewMode]);
+  }, [filteredRecords, viewMode, chartFilterType]);
   const pieData = [
     { name: '남성', value: stats.breakdown['성인(남)'] + stats.breakdown['청소년(남)'] + stats.breakdown['어린이(남)'] + stats.breakdown['유아(남)'] },
     { name: '여성', value: stats.breakdown['성인(여)'] + stats.breakdown['청소년(여)'] + stats.breakdown['어린이(여)'] + stats.breakdown['유아(여)'] },
@@ -538,91 +528,57 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex flex-col gap-3 mb-6 pl-2">
-          {/* Age Group */}
-          <div className="flex items-center space-x-2">
-            <span className="text-[10px] font-bold text-slate-400 w-10">연령별</span>
-            <div className="flex flex-wrap gap-2">
-              {['성인', '청소년', '어린이', '유아'].map(key => (
-                <button
-                  key={key}
-                  onClick={() => toggleSeries(key as keyof typeof visibleSeries)}
-                  className={cn(
-                    "flex items-center space-x-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-all font-bold active:scale-95",
-                    visibleSeries[key as keyof typeof visibleSeries] 
-                      ? "bg-slate-800 border-slate-800 text-white shadow-sm" 
-                      : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50"
-                  )}
-                >
-                  {visibleSeries[key as keyof typeof visibleSeries] ? <CheckSquare className="w-3.5 h-3.5 opacity-70" /> : <Square className="w-3.5 h-3.5" />}
-                  <span>{key}</span>
-                </button>
-              ))}
+          {/* Main Visualizer Filters */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center space-x-2">
+              <span className="text-[10px] font-bold text-slate-400 w-14 shrink-0">관람 유형</span>
+              <div className="flex p-1 bg-slate-100 rounded-xl border border-slate-200 gap-1 overflow-x-auto hide-scrollbar">
+                {[
+                  { value: 'all', label: '전체 관람' },
+                  { value: 'autonomous', label: '자율 관람' },
+                  { value: 'reserved', label: '예약 관람' }
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setChartFilterType(opt.value as any)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95",
+                      chartFilterType === opt.value 
+                        ? "bg-white text-blue-600 shadow-sm border border-slate-200/50" 
+                        : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-          
-          {/* Gender Group */}
-          <div className="flex items-center space-x-2">
-            <span className="text-[10px] font-bold text-slate-400 w-10">성별</span>
-            <div className="flex flex-wrap gap-2">
-              {['남성', '여성'].map(key => (
-                <button
-                  key={key}
-                  onClick={() => toggleSeries(key as keyof typeof visibleSeries)}
-                  className={cn(
-                    "flex items-center space-x-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-all font-bold active:scale-95",
-                    visibleSeries[key as keyof typeof visibleSeries] 
-                      ? "bg-slate-800 border-slate-800 text-white shadow-sm" 
-                      : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50"
-                  )}
-                >
-                  {visibleSeries[key as keyof typeof visibleSeries] ? <CheckSquare className="w-3.5 h-3.5 opacity-70" /> : <Square className="w-3.5 h-3.5" />}
-                  <span>{key}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Age+Gender Group */}
-          <div className="flex items-center space-x-2">
-            <span className="text-[10px] font-bold text-slate-400 w-10">연령+성별</span>
-            <div className="flex flex-wrap gap-2">
-              {['성인(남)', '성인(여)', '청소년(남)', '청소년(여)', '어린이(남)', '어린이(여)', '유아(남)', '유아(여)'].map(key => (
-                <button
-                  key={key}
-                  onClick={() => toggleSeries(key as keyof typeof visibleSeries)}
-                  className={cn(
-                    "flex items-center space-x-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-all font-bold active:scale-95",
-                    visibleSeries[key as keyof typeof visibleSeries] 
-                      ? "bg-slate-800 border-slate-800 text-white shadow-sm" 
-                      : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50"
-                  )}
-                >
-                  {visibleSeries[key as keyof typeof visibleSeries] ? <CheckSquare className="w-3.5 h-3.5 opacity-70" /> : <Square className="w-3.5 h-3.5" />}
-                  <span>{key}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Type Group */}
-          <div className="flex items-center space-x-2">
-            <span className="text-[10px] font-bold text-slate-400 w-10">유형별</span>
-            <div className="flex flex-wrap gap-2">
-              {['자율관람', '예약관람'].map(key => (
-                <button
-                  key={key}
-                  onClick={() => toggleSeries(key as keyof typeof visibleSeries)}
-                  className={cn(
-                    "flex items-center space-x-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-all font-bold active:scale-95",
-                    visibleSeries[key as keyof typeof visibleSeries] 
-                      ? "bg-slate-800 border-slate-800 text-white shadow-sm" 
-                      : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50"
-                  )}
-                >
-                  {visibleSeries[key as keyof typeof visibleSeries] ? <CheckSquare className="w-3.5 h-3.5 opacity-70" /> : <Square className="w-3.5 h-3.5" />}
-                  <span>{key}</span>
-                </button>
-              ))}
+            
+            <div className="hidden sm:block w-px h-8 bg-slate-200"></div>
+            
+            <div className="flex items-center space-x-2">
+              <span className="text-[10px] font-bold text-slate-400 w-14 shrink-0 sm:w-auto">표시 기준</span>
+              <div className="flex p-1 bg-slate-100 rounded-xl border border-slate-200 gap-1 overflow-x-auto hide-scrollbar">
+                {[
+                  { value: 'total', label: '총합계' },
+                  { value: 'age', label: '연령별' },
+                  { value: 'gender', label: '성별' },
+                  { value: 'detailed', label: '상세(연령+성별)' }
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setChartDisplayMode(opt.value as any)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95",
+                      chartDisplayMode === opt.value 
+                        ? "bg-slate-800 text-white shadow-sm" 
+                        : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -642,25 +598,35 @@ export default function DashboardPage() {
                     itemStyle={{ color: '#0f172a', fontWeight: 'bold' }}
                   />
                   <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingTop: '10px' }} />
-                  {visibleSeries['성인'] && <Bar dataKey="성인" stackId="age" fill="#3b82f6" />}
-                  {visibleSeries['청소년'] && <Bar dataKey="청소년" stackId="age" fill="#10b981" />}
-                  {visibleSeries['어린이'] && <Bar dataKey="어린이" stackId="age" fill="#f59e0b" />}
-                  {visibleSeries['유아'] && <Bar dataKey="유아" stackId="age" fill="#f43f5e" />}
-                  
-                  {visibleSeries['남성'] && <Bar dataKey="남성" stackId="gender" fill="#8b5cf6" />}
-                  {visibleSeries['여성'] && <Bar dataKey="여성" stackId="gender" fill="#0ea5e9" />}
-
-                  {visibleSeries['성인(남)'] && <Bar dataKey="성인(남)" stackId="age_gender" fill="#1e3a8a" />}
-                  {visibleSeries['성인(여)'] && <Bar dataKey="성인(여)" stackId="age_gender" fill="#60a5fa" />}
-                  {visibleSeries['청소년(남)'] && <Bar dataKey="청소년(남)" stackId="age_gender" fill="#064e3b" />}
-                  {visibleSeries['청소년(여)'] && <Bar dataKey="청소년(여)" stackId="age_gender" fill="#34d399" />}
-                  {visibleSeries['어린이(남)'] && <Bar dataKey="어린이(남)" stackId="age_gender" fill="#78350f" />}
-                  {visibleSeries['어린이(여)'] && <Bar dataKey="어린이(여)" stackId="age_gender" fill="#fbbf24" />}
-                  {visibleSeries['유아(남)'] && <Bar dataKey="유아(남)" stackId="age_gender" fill="#881337" />}
-                  {visibleSeries['유아(여)'] && <Bar dataKey="유아(여)" stackId="age_gender" fill="#fb7185" />}
-
-                  {visibleSeries.자율관람 && <Bar dataKey="자율관람" stackId="type" fill="#64748b" />}
-                  {visibleSeries.예약관람 && <Bar dataKey="예약관람" stackId="type" fill="#cbd5e1" />}
+                  {chartDisplayMode === 'total' && (
+                    <Bar dataKey="총합계" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  )}
+                  {chartDisplayMode === 'age' && (
+                    <>
+                      <Bar dataKey="성인" stackId="age" fill="#3b82f6" />
+                      <Bar dataKey="청소년" stackId="age" fill="#10b981" />
+                      <Bar dataKey="어린이" stackId="age" fill="#f59e0b" />
+                      <Bar dataKey="유아" stackId="age" fill="#f43f5e" />
+                    </>
+                  )}
+                  {chartDisplayMode === 'gender' && (
+                    <>
+                      <Bar dataKey="남성" stackId="gender" fill="#8b5cf6" />
+                      <Bar dataKey="여성" stackId="gender" fill="#0ea5e9" />
+                    </>
+                  )}
+                  {chartDisplayMode === 'detailed' && (
+                    <>
+                      <Bar dataKey="성인(남)" stackId="age_gender" fill="#1e3a8a" />
+                      <Bar dataKey="성인(여)" stackId="age_gender" fill="#60a5fa" />
+                      <Bar dataKey="청소년(남)" stackId="age_gender" fill="#064e3b" />
+                      <Bar dataKey="청소년(여)" stackId="age_gender" fill="#34d399" />
+                      <Bar dataKey="어린이(남)" stackId="age_gender" fill="#78350f" />
+                      <Bar dataKey="어린이(여)" stackId="age_gender" fill="#fbbf24" />
+                      <Bar dataKey="유아(남)" stackId="age_gender" fill="#881337" />
+                      <Bar dataKey="유아(여)" stackId="age_gender" fill="#fb7185" />
+                    </>
+                  )}
                 </BarChart>
               ) : (
                 <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -673,25 +639,35 @@ export default function DashboardPage() {
                     itemStyle={{ color: '#0f172a', fontWeight: 'bold' }}
                   />
                   <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingTop: '10px' }} />
-                  {visibleSeries['성인'] && <Line type="monotone" dataKey="성인" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />}
-                  {visibleSeries['청소년'] && <Line type="monotone" dataKey="청소년" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} />}
-                  {visibleSeries['어린이'] && <Line type="monotone" dataKey="어린이" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4 }} />}
-                  {visibleSeries['유아'] && <Line type="monotone" dataKey="유아" stroke="#f43f5e" strokeWidth={3} dot={{ r: 4 }} />}
-                  
-                  {visibleSeries['남성'] && <Line type="monotone" dataKey="남성" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />}
-                  {visibleSeries['여성'] && <Line type="monotone" dataKey="여성" stroke="#0ea5e9" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />}
-
-                  {visibleSeries['성인(남)'] && <Line type="monotone" dataKey="성인(남)" stroke="#1e3a8a" strokeWidth={2} dot={{ r: 3 }} />}
-                  {visibleSeries['성인(여)'] && <Line type="monotone" dataKey="성인(여)" stroke="#60a5fa" strokeWidth={2} dot={{ r: 3 }} />}
-                  {visibleSeries['청소년(남)'] && <Line type="monotone" dataKey="청소년(남)" stroke="#064e3b" strokeWidth={2} dot={{ r: 3 }} />}
-                  {visibleSeries['청소년(여)'] && <Line type="monotone" dataKey="청소년(여)" stroke="#34d399" strokeWidth={2} dot={{ r: 3 }} />}
-                  {visibleSeries['어린이(남)'] && <Line type="monotone" dataKey="어린이(남)" stroke="#78350f" strokeWidth={2} dot={{ r: 3 }} />}
-                  {visibleSeries['어린이(여)'] && <Line type="monotone" dataKey="어린이(여)" stroke="#fbbf24" strokeWidth={2} dot={{ r: 3 }} />}
-                  {visibleSeries['유아(남)'] && <Line type="monotone" dataKey="유아(남)" stroke="#881337" strokeWidth={2} dot={{ r: 3 }} />}
-                  {visibleSeries['유아(여)'] && <Line type="monotone" dataKey="유아(여)" stroke="#fb7185" strokeWidth={2} dot={{ r: 3 }} />}
-
-                  {visibleSeries.자율관람 && <Line type="monotone" dataKey="자율관람" stroke="#64748b" strokeWidth={2} strokeDasharray="5 5" />}
-                  {visibleSeries.예약관람 && <Line type="monotone" dataKey="예약관람" stroke="#cbd5e1" strokeWidth={2} strokeDasharray="5 5" />}
+                  {chartDisplayMode === 'total' && (
+                    <Line type="monotone" dataKey="총합계" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  )}
+                  {chartDisplayMode === 'age' && (
+                    <>
+                      <Line type="monotone" dataKey="성인" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                      <Line type="monotone" dataKey="청소년" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} />
+                      <Line type="monotone" dataKey="어린이" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4 }} />
+                      <Line type="monotone" dataKey="유아" stroke="#f43f5e" strokeWidth={3} dot={{ r: 4 }} />
+                    </>
+                  )}
+                  {chartDisplayMode === 'gender' && (
+                    <>
+                      <Line type="monotone" dataKey="남성" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                      <Line type="monotone" dataKey="여성" stroke="#0ea5e9" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                    </>
+                  )}
+                  {chartDisplayMode === 'detailed' && (
+                    <>
+                      <Line type="monotone" dataKey="성인(남)" stroke="#1e3a8a" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="성인(여)" stroke="#60a5fa" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="청소년(남)" stroke="#064e3b" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="청소년(여)" stroke="#34d399" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="어린이(남)" stroke="#78350f" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="어린이(여)" stroke="#fbbf24" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="유아(남)" stroke="#881337" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="유아(여)" stroke="#fb7185" strokeWidth={2} dot={{ r: 3 }} />
+                    </>
+                  )}
                 </LineChart>
               )}
             </ResponsiveContainer>
