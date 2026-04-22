@@ -15,7 +15,7 @@ export default function DashboardPage() {
   const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [chartFilterType, setChartFilterType] = useState<'all' | 'autonomous' | 'reserved'>('all');
-  const [chartDisplayMode, setChartDisplayMode] = useState<'total' | 'age' | 'gender' | 'detailed'>('age');
+  const [chartDisplayMode, setChartDisplayMode] = useState<'total' | 'age' | 'gender' | 'detailed'>('detailed');
   const { getAllRecords } = useStore();
 
   const handleDownloadChart = async (chartId: string, filename: string) => {
@@ -592,10 +592,10 @@ export default function DashboardPage() {
                   <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
                   <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
                   <Tooltip 
-                    shared={false}
                     cursor={{ fill: '#f8fafc', opacity: 0.8 }}
                     contentStyle={{ backgroundColor: '#ffffff', borderColor: '#f1f5f9', borderRadius: '12px', color: '#0f172a', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
                     itemStyle={{ color: '#0f172a', fontWeight: 'bold' }}
+                    labelStyle={{ fontWeight: '900', marginBottom: '4px' }}
                   />
                   <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingTop: '10px' }} />
                   {chartDisplayMode === 'total' && (
@@ -617,14 +617,14 @@ export default function DashboardPage() {
                   )}
                   {chartDisplayMode === 'detailed' && (
                     <>
-                      <Bar dataKey="성인(남)" stackId="age_gender" fill="#1e3a8a" />
-                      <Bar dataKey="성인(여)" stackId="age_gender" fill="#60a5fa" />
-                      <Bar dataKey="청소년(남)" stackId="age_gender" fill="#064e3b" />
-                      <Bar dataKey="청소년(여)" stackId="age_gender" fill="#34d399" />
-                      <Bar dataKey="어린이(남)" stackId="age_gender" fill="#78350f" />
-                      <Bar dataKey="어린이(여)" stackId="age_gender" fill="#fbbf24" />
-                      <Bar dataKey="유아(남)" stackId="age_gender" fill="#881337" />
-                      <Bar dataKey="유아(여)" stackId="age_gender" fill="#fb7185" />
+                      <Bar dataKey="성인(남)" stackId="age_gender" fill="#3b82f6" />
+                      <Bar dataKey="성인(여)" stackId="age_gender" fill="#93c5fd" />
+                      <Bar dataKey="청소년(남)" stackId="age_gender" fill="#10b981" />
+                      <Bar dataKey="청소년(여)" stackId="age_gender" fill="#6ee7b7" />
+                      <Bar dataKey="어린이(남)" stackId="age_gender" fill="#f59e0b" />
+                      <Bar dataKey="어린이(여)" stackId="age_gender" fill="#fcd34d" />
+                      <Bar dataKey="유아(남)" stackId="age_gender" fill="#f43f5e" />
+                      <Bar dataKey="유아(여)" stackId="age_gender" fill="#fda4af" />
                     </>
                   )}
                 </BarChart>
@@ -634,9 +634,9 @@ export default function DashboardPage() {
                   <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
                   <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
                   <Tooltip 
-                    shared={false}
                     contentStyle={{ backgroundColor: '#ffffff', borderColor: '#f1f5f9', borderRadius: '12px', color: '#0f172a', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
                     itemStyle={{ color: '#0f172a', fontWeight: 'bold' }}
+                    labelStyle={{ fontWeight: '900', marginBottom: '4px' }}
                   />
                   <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingTop: '10px' }} />
                   {chartDisplayMode === 'total' && (
@@ -658,14 +658,14 @@ export default function DashboardPage() {
                   )}
                   {chartDisplayMode === 'detailed' && (
                     <>
-                      <Line type="monotone" dataKey="성인(남)" stroke="#1e3a8a" strokeWidth={2} dot={{ r: 3 }} />
-                      <Line type="monotone" dataKey="성인(여)" stroke="#60a5fa" strokeWidth={2} dot={{ r: 3 }} />
-                      <Line type="monotone" dataKey="청소년(남)" stroke="#064e3b" strokeWidth={2} dot={{ r: 3 }} />
-                      <Line type="monotone" dataKey="청소년(여)" stroke="#34d399" strokeWidth={2} dot={{ r: 3 }} />
-                      <Line type="monotone" dataKey="어린이(남)" stroke="#78350f" strokeWidth={2} dot={{ r: 3 }} />
-                      <Line type="monotone" dataKey="어린이(여)" stroke="#fbbf24" strokeWidth={2} dot={{ r: 3 }} />
-                      <Line type="monotone" dataKey="유아(남)" stroke="#881337" strokeWidth={2} dot={{ r: 3 }} />
-                      <Line type="monotone" dataKey="유아(여)" stroke="#fb7185" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="성인(남)" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="성인(여)" stroke="#93c5fd" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="청소년(남)" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="청소년(여)" stroke="#6ee7b7" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="어린이(남)" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="어린이(여)" stroke="#fcd34d" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="유아(남)" stroke="#f43f5e" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="유아(여)" stroke="#fda4af" strokeWidth={2} dot={{ r: 3 }} />
                     </>
                   )}
                 </LineChart>

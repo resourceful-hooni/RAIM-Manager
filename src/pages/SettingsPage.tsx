@@ -209,7 +209,7 @@ export default function SettingsPage() {
           <div className="space-y-3 text-sm bg-slate-50 p-4 rounded-2xl border border-slate-100">
             <div className="flex justify-between items-center">
               <span className="text-slate-500 font-bold">버전</span>
-              <span className="text-slate-900 font-black bg-white px-2 py-1 rounded-lg border border-slate-200/60 shadow-sm text-xs">1.2.0</span>
+              <span className="text-slate-900 font-black bg-white px-2 py-1 rounded-lg border border-slate-200/60 shadow-sm text-xs">1.3.0</span>
             </div>
             <div className="h-px bg-slate-200/60 w-full" />
             <div className="flex justify-between items-center">

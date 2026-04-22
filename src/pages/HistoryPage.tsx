@@ -82,7 +82,8 @@ export default function HistoryPage() {
       ) : (
         <div className="space-y-4 pb-10">
           {groupedRecords.map(({ date, records }) => {
-            const isExpanded = expandedDates[date] !== false; // Default true
+            const todayStr = format(new Date(), 'yyyy-MM-dd');
+            const isExpanded = expandedDates[date] !== undefined ? expandedDates[date] : date === todayStr;
             const dailyTotal = records.reduce((sum, r) => {
               const safeCounts = { ...r.counts };
               const t = Object.values(safeCounts).reduce((a: any, b: any) => (a || 0) + (b || 0), 0);
