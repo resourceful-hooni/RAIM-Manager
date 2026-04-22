@@ -16,6 +16,7 @@ export default function DashboardPage() {
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [chartFilterType, setChartFilterType] = useState<'all' | 'autonomous' | 'reserved'>('all');
   const [chartDisplayMode, setChartDisplayMode] = useState<'total' | 'age' | 'gender' | 'detailed'>('detailed');
+  const [breakdownFilterType, setBreakdownFilterType] = useState<'all' | 'autonomous' | 'reserved'>('all');
   const { getAllRecords } = useStore();
 
   const handleDownloadChart = async (chartId: string, filename: string) => {
@@ -181,6 +182,14 @@ export default function DashboardPage() {
 
   const stats = useMemo(() => calculateStats(filteredRecords), [filteredRecords]);
   const prevStats = useMemo(() => calculateStats(prevFilteredRecords), [prevFilteredRecords]);
+
+  const breakdownStats = useMemo(() => {
+    const records = filteredRecords.filter(r => {
+      if (breakdownFilterType === 'all') return true;
+      return r.type === breakdownFilterType;
+    });
+    return calculateStats(records).breakdown;
+  }, [filteredRecords, breakdownFilterType]);
 
   const getPercentageChange = (current: number, previous: number) => {
     if (previous === 0) return current > 0 ? '+100%' : '0%';
@@ -498,15 +507,37 @@ export default function DashboardPage() {
       {/* Detailed Breakdown Table */}
       <div className="bg-white border border-slate-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)] rounded-3xl p-6 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 bg-slate-200" />
-        <h3 className="text-sm font-extrabold text-slate-800 tracking-tight mb-4 flex items-center">
-          <BarChart2 className="w-4 h-4 mr-2 text-blue-500" />
-          상세 방문객 분포 (연령/성별)
-        </h3>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+          <h3 className="text-sm font-extrabold text-slate-800 tracking-tight flex items-center">
+            <BarChart2 className="w-4 h-4 mr-2 text-blue-500" />
+            상세 방문객 분포 (연령/성별)
+          </h3>
+          <div className="flex p-1 bg-slate-100 rounded-xl border border-slate-200 gap-1">
+            {[
+              { value: 'all', label: '전체' },
+              { value: 'autonomous', label: '자율' },
+              { value: 'reserved', label: '예약' }
+            ].map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setBreakdownFilterType(opt.value as any)}
+                className={cn(
+                  "px-3 py-1 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap active:scale-95",
+                  breakdownFilterType === opt.value 
+                    ? "bg-white text-blue-600 shadow-sm border border-slate-200/50" 
+                    : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="grid grid-cols-2 gap-3">
-          {Object.entries(stats.breakdown).map(([key, value]) => (
+          {Object.entries(breakdownStats).map(([key, value]) => (
             <div key={key} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-100">
               <span className="text-xs font-bold text-slate-600">{key}</span>
-              <span className="text-sm font-black text-slate-900">{value}명</span>
+              <span className="text-sm font-black text-slate-900">{value as number}명</span>
             </div>
           ))}
         </div>
