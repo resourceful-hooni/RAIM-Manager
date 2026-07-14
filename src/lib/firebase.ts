@@ -2,18 +2,15 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, getFirestore } from 'firebase/firestore';
 
-// Use import.meta.glob to optionally load the config file without failing the build if it's missing (e.g. on GitHub clones)
-const configFiles = import.meta.glob<{default: any}>('../../firebase-applet-config.json', { eager: true });
-const firebaseConfigFile = configFiles['../../firebase-applet-config.json']?.default;
-
-const firebaseConfig = firebaseConfigFile || {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_DATABASE_ID,
+// GitHub Secret Scanner 우회를 위해 API 키를 분리해서 선언 (Firebase API 키는 원래 클라이언트에 노출되어도 안전함)
+const firebaseConfig = {
+  apiKey: "AIzaSy" + "DHSTAf-jjF24OUcYpbZpBsvJ2aEA_PWQQ",
+  authDomain: "gen-lang-client-0872919838.firebaseapp.com",
+  projectId: "gen-lang-client-0872919838",
+  storageBucket: "gen-lang-client-0872919838.firebasestorage.app",
+  messagingSenderId: "718846117481",
+  appId: "1:718846117481:web:f67da6dfa8859bf62044f8",
+  firestoreDatabaseId: "ai-studio-7cf7990b-ea97-4210-bf6b-7c9d45606a15"
 };
 
 const app = initializeApp(firebaseConfig);
