@@ -507,6 +507,17 @@ export default function DashboardPage() {
 
     const analyzeData = async () => {
       setIsAiLoading(true);
+      
+      const isStaticHost = window.location.hostname === 'raim.kimjihoon.me' || window.location.hostname.includes('github.io');
+      
+      if (isStaticHost) {
+        // Skip fetch on static hosts that do not support the POST API
+        const fallbackMsg = generateClientFallback(richStats, refreshSeed, peakDay, peakSession, maxAvg);
+        setAiInsight(fallbackMsg);
+        setIsAiLoading(false);
+        return;
+      }
+
       try {
         const response = await fetch('/api/analyze', {
           method: 'POST',
