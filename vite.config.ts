@@ -19,7 +19,7 @@ export default defineConfig(({mode}) => {
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
           clientsClaim: true,
           skipWaiting: true,
-          navigateFallbackDenylist: [/\.xlsx$/, /^\/sheets/]
+          navigateFallbackDenylist: [/\.xlsx$/, /^\/sheets/, /^\/api/]
         },
         manifest: {
           name: '방문객 카운터',

@@ -1,3 +1,11 @@
+if (window.caches) {
+  caches.keys().then(names => {
+    for (let name of names) {
+      caches.delete(name);
+    }
+  });
+}
+
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { HashRouter, Routes, Route } from 'react-router';
