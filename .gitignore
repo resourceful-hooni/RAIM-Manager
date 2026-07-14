@@ -7,3 +7,4 @@ dist-ssr/
 .env*
 !.env.example
 dist
+firebase-applet-config.json
