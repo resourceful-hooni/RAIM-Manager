@@ -1,0 +1,160 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'Paperlogy';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-1Thin.woff2') format('woff2');
+  font-weight: 100;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Paperlogy';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-2ExtraLight.woff2') format('woff2');
+  font-weight: 200;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Paperlogy';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-3Light.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Paperlogy';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-4Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Paperlogy';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-5Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Paperlogy';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-6SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Paperlogy';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-7Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Paperlogy';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-8ExtraBold.woff2') format('woff2');
+  font-weight: 800;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Paperlogy';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-9Black.woff2') format('woff2');
+  font-weight: 900;
+  font-style: normal;
+}
+
+@theme {
+  --font-sans: "Paperlogy", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Apple SD Gothic Neo", system-ui, sans-serif;
+  --color-brand-cyan: #1FBDC6;
+  --color-brand-light: #00BFDF;
+  --color-brand-muted: #508EBC;
+  --color-brand-blue: #276FB7;
+  --color-brand-dark: #00448B;
+  --color-brand-black: #000000;
+}
+
+html {
+  font-size: 17px;
+  overscroll-behavior-y: none;
+}
+@media (min-width: 640px) {
+  html {
+    font-size: 17.8px;
+  }
+}
+@media (min-width: 1024px) {
+  html {
+    font-size: 18.4px;
+  }
+}
+
+body {
+  font-family: "Paperlogy", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Apple SD Gothic Neo", system-ui, sans-serif;
+  overscroll-behavior-y: none;
+  background-color: #f8fafc;
+  background-image: 
+    radial-gradient(circle at 15% 50%, rgba(31, 189, 198, 0.15), transparent 40%),
+    radial-gradient(circle at 85% 30%, rgba(0, 191, 223, 0.15), transparent 40%),
+    radial-gradient(circle at 50% 80%, rgba(39, 111, 183, 0.15), transparent 40%),
+    radial-gradient(circle at 80% 90%, rgba(0, 68, 139, 0.1), transparent 40%);
+  background-attachment: fixed;
+  color: var(--color-brand-black);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent !important;
+  outline: none !important;
+}
+
+/* Global Focus / Outline Reset to prevent annoying focus rings on click */
+button, button:focus, button:active, button:focus-visible,
+a, a:focus, a:active, a:focus-visible,
+input, input:focus, input:active, input:focus-visible,
+select, select:focus, select:active, select:focus-visible,
+textarea, textarea:focus, textarea:active, textarea:focus-visible,
+[role="button"], [role="button"]:focus, [role="button"]:active, [role="button"]:focus-visible,
+*:focus, *:focus-visible, *:active {
+  outline: 0px solid transparent !important;
+  outline: none !important;
+  outline-offset: 0px !important;
+  box-shadow: var(--tw-shadow, none) !important; /* Strips focus rings/glows while preserving core shadows */
+  --tw-ring-color: transparent !important;
+  --tw-ring-width: 0px !important;
+  --tw-ring-offset-width: 0px !important;
+  --tw-ring-offset-color: transparent !important;
+}
+
+/* Ensure form elements and buttons strictly inherit Paperlogy font */
+button, input, select, textarea, option {
+  font-family: inherit !important;
+}
+
+/* Custom Scrollbar Styles for PC */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(8px);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(39, 111, 183, 0.3); /* brand-blue with transparency */
+  border-radius: 9999px;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(39, 111, 183, 0.55); /* brighter brand-blue on hover */
+}
+
+/* For Firefox scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(39, 111, 183, 0.3) rgba(255, 255, 255, 0.4);
+}@keyframes shimmer {
+  0% { transform: translateX(-200%) skewX(-15deg); }
+  100% { transform: translateX(400%) skewX(-15deg); }
+}
+.animate-shimmer {
+  animation: shimmer 3s infinite linear;
+}

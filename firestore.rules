@@ -1,0 +1,92 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: records
+    // Document ID: {date}-{type}-{session}
+    // Fields:
+    //   - id: string (required) - Unique identifier
+    //   - date: string (required) - Date in YYYY-MM-DD format
+    //   - type: string (required) - "autonomous" or "reserved"
+    //   - session: string (required) - Session time or label
+    //   - counts: map (required) - Contains adult, youth, child, infant (all numbers)
+    //   - memo: string (optional) - Notes
+    //   - updatedAt: number (required) - Timestamp of last update
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAllowedUser() {
+      return isAuthenticated();
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function isValidCounts(counts) {
+      return counts is map &&
+             counts.keys().hasAll(['adult_m', 'adult_f', 'youth_m', 'youth_f', 'child_m', 'child_f', 'infant_m', 'infant_f']) &&
+             counts.adult_m is number && counts.adult_m >= 0 &&
+             counts.adult_f is number && counts.adult_f >= 0 &&
+             counts.youth_m is number && counts.youth_m >= 0 &&
+             counts.youth_f is number && counts.youth_f >= 0 &&
+             counts.child_m is number && counts.child_m >= 0 &&
+             counts.child_f is number && counts.child_f >= 0 &&
+             counts.infant_m is number && counts.infant_m >= 0 &&
+             counts.infant_f is number && counts.infant_f >= 0 &&
+             (!('noShow' in counts) || (counts.noShow is number && counts.noShow >= 0));
+    }
+
+    function isValidRecord(data) {
+      return hasRequiredFields(['id', 'date', 'type', 'session', 'counts', 'updatedAt']) &&
+             data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
+             data.date is string && data.date.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
+             data.type in ['autonomous', 'reserved'] &&
+             data.session is string && data.session.size() > 0 && data.session.size() < 50 &&
+             (!('program' in data) || (data.program is string && data.program.size() <= 50)) &&
+             isValidCounts(data.counts) &&
+             (!('memo' in data) || (data.memo is string && data.memo.size() <= 1000)) &&
+             data.updatedAt is number;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /allowed_users/{email} {
+      allow read: if isAllowedUser();
+      allow write: if isAuthenticated() && request.auth.token.email == 'raimseoul08@gmail.com';
+    }
+
+    match /records/{recordId} {
+      // Allow read for allowed users
+      allow read: if isAllowedUser();
+      
+      // Allow create if allowed user and data is valid
+      allow create: if isAllowedUser() && isValidRecord(request.resource.data);
+      
+      // Allow update if allowed user and data is valid
+      allow update: if isAllowedUser() && isValidRecord(request.resource.data);
+      
+      // Allow delete if allowed user
+      allow delete: if isAllowedUser();
+    }
+
+    match /settings/{docId} {
+      allow read: if isAllowedUser();
+      allow write: if isAllowedUser();
+    }
+  }
+}

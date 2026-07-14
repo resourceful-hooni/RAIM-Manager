@@ -1,0 +1,15 @@
+{
+  "name": "RAIM 방문자 관리",
+  "short_name": "RAIM 카운터",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "https://science.seoul.go.kr/RAIM/resource/www/img/favicon32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    }
+  ]
+}
