@@ -8,6 +8,7 @@ import { useAuth } from './AuthProvider';
 import { useStore, useFirestoreSync, ProgramType } from '@/store/useStore';
 import UserManual from './UserManual';
 import GlobalActionBanner from './GlobalActionBanner';
+import RobotCursor from './RobotCursor';
 
 export default function Layout() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -399,6 +400,10 @@ export default function Layout() {
 
       {/* Global Action Info */}
       <GlobalActionBanner />
+      
+      {/* Custom Robot Cursor */}
+      <RobotCursor />
+
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto pb-[calc(6rem_+_env(safe-area-inset-bottom))] pt-2">
         <Outlet />
