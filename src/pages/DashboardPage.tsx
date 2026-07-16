@@ -145,22 +145,81 @@ export default function DashboardPage() {
       records = records.filter(r => getRecordProgram(r) === programFilter);
     }
 
+    const now = new Date();
+    const todayStr = format(now, 'yyyy-MM-dd');
+    const thisMonthStr = format(now, 'yyyy-MM');
+    const thisYearStr = format(now, 'yyyy');
+    
+    // Helper to filter by current time of day if we are looking at current period
+    const filterByTimeOfDay = (r: any) => {
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      
+      if (r.session.includes('시')) {
+        const hour = parseInt(r.session, 10);
+        if (!isNaN(hour)) return (hour * 60) <= currentMinutes;
+      } else if (r.session.includes(':')) {
+        const match = r.session.match(/\((\d{1,2}):(\d{2})\)/);
+        if (match) {
+          return (parseInt(match[1], 10) * 60 + parseInt(match[2], 10)) <= currentMinutes;
+        }
+      }
+      
+      const updatedTime = new Date(r.updatedAt);
+      const updatedMinutes = updatedTime.getHours() * 60 + updatedTime.getMinutes();
+      return updatedMinutes <= currentMinutes;
+    };
+
     if (viewMode === 'daily') {
       const prevDate = format(subDays(new Date(date), 1), 'yyyy-MM-dd');
-      return records.filter(r => r.date === prevDate);
+      return records.filter(r => r.date === prevDate && (date === todayStr ? filterByTimeOfDay(r) : true));
     } else if (viewMode === 'weekly') {
       const end = subDays(new Date(date), 7);
       const start = subDays(new Date(date), 13);
+      const endStr = format(end, 'yyyy-MM-dd');
       return records.filter(r => {
         const d = new Date(r.date);
-        return d >= start && d <= end;
+        const isWithinRange = d >= start && d <= end;
+        if (!isWithinRange) return false;
+        if (date === todayStr && r.date === endStr) {
+           return filterByTimeOfDay(r);
+        }
+        return true;
       });
     } else if (viewMode === 'monthly') {
       const prevMonth = format(subMonths(new Date(date), 1), 'yyyy-MM');
-      return records.filter(r => r.date.startsWith(prevMonth));
+      const isCurrentMonth = date.startsWith(thisMonthStr);
+      const currentDay = now.getDate();
+      
+      return records.filter(r => {
+        if (!r.date.startsWith(prevMonth)) return false;
+        if (isCurrentMonth) {
+          const rDay = parseInt(r.date.split('-')[2], 10);
+          if (rDay > currentDay) return false;
+          if (rDay === currentDay) return filterByTimeOfDay(r);
+        }
+        return true;
+      });
     } else {
       const prevYear = format(subYears(new Date(date), 1), 'yyyy');
-      return records.filter(r => r.date.startsWith(prevYear));
+      const isCurrentYear = date.startsWith(thisYearStr);
+      const currentMonth = now.getMonth() + 1;
+      const currentDay = now.getDate();
+      
+      return records.filter(r => {
+        if (!r.date.startsWith(prevYear)) return false;
+        if (isCurrentYear) {
+          const [y, m, d] = r.date.split('-');
+          const rMonth = parseInt(m, 10);
+          const rDay = parseInt(d, 10);
+          
+          if (rMonth > currentMonth) return false;
+          if (rMonth === currentMonth) {
+            if (rDay > currentDay) return false;
+            if (rDay === currentDay) return filterByTimeOfDay(r);
+          }
+        }
+        return true;
+      });
     }
   }, [date, allRecords, viewMode, programFilter]);
 
