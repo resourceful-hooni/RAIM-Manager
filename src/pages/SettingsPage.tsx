@@ -11,6 +11,13 @@ import { toast } from 'sonner';
 
 const UPDATE_HISTORY = [
   {
+    version: '1.9.4',
+    notes: [
+      '텍스트 드래그 방지 기능 추가 및 입력 요소 예외 처리',
+      '비교 분석(일별, 주별, 월별, 연간) 시 현재 시각 및 당일 기준 일치하도록 개선',
+    ]
+  },
+  {
     version: '1.9.0',
     notes: [
       '최신 Gemini 3.5 Flash 모델 탑재 및 다각도 심층 프롬프트 정교화',
@@ -63,7 +70,7 @@ export default function SettingsPage() {
   const [newPin, setNewPin] = useState('');
   const [isPinEditing, setIsPinEditing] = useState(false);
   const [expandedVersions, setExpandedVersions] = useState<Record<string, boolean>>({
-    '1.9.0': true,
+    '1.9.4': true,
   });
 
   const toggleVersion = (version: string) => {
