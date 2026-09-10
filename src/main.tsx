@@ -1,7 +1,9 @@
-if (window.caches) {
-  caches.keys().then(names => {
-    for (let name of names) {
-      caches.delete(name);
+let refreshing = false;
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
     }
   });
 }

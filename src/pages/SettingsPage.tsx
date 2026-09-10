@@ -11,6 +11,13 @@ import { toast } from 'sonner';
 
 const UPDATE_HISTORY = [
   {
+    version: '1.9.5',
+    notes: [
+      '앱 업데이트 시 캐시가 강제로 비워지지 않던 현상 수정 (자동 새로고침 적용)',
+      '앱 정보의 버전 표시가 과거 버전으로 고정되어 있던 문제 해결',
+    ]
+  },
+  {
     version: '1.9.4',
     notes: [
       '텍스트 드래그 방지 기능 추가 및 입력 요소 예외 처리',
@@ -70,7 +77,7 @@ export default function SettingsPage() {
   const [newPin, setNewPin] = useState('');
   const [isPinEditing, setIsPinEditing] = useState(false);
   const [expandedVersions, setExpandedVersions] = useState<Record<string, boolean>>({
-    '1.9.4': true,
+    '1.9.5': true,
   });
 
   const toggleVersion = (version: string) => {
