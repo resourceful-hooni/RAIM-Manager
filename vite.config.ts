@@ -13,7 +13,7 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['manual.png', 'pop.png', 'logo.png'],
+        includeAssets: ['pop.svg', 'logo.png', 'logo_wa.png', 'footer_logo.png'],
         workbox: {
           globIgnores: ['**/*.xlsx', '**/sheets/**/*'],
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB

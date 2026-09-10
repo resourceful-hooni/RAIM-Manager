@@ -29,7 +29,7 @@ export default function Layout() {
   useEffect(() => {
     // Preload Easter Egg image
     const img = new Image();
-    img.src = '/pop.png';
+    img.src = '/pop.svg';
   }, []);
 
   useEffect(() => {
@@ -427,7 +427,7 @@ export default function Layout() {
               POP!! 💥
             </div>
             <img 
-              src="/pop.png" 
+              src="/pop.svg" 
               alt="Easter Egg" 
               className="w-[85vw] h-[85vw] max-w-2xl max-h-2xl object-contain drop-shadow-[0_20px_60px_rgba(0,0,0,0.8)]"
             />

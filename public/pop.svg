@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <filter id="shadow">
+      <feDropShadow dx="2" dy="4" stdDeviation="2" flood-color="#000" flood-opacity="0.5" />
+    </filter>
+  </defs>
+  <path d="M100 10 L120 70 L190 70 L135 110 L155 180 L100 135 L45 180 L65 110 L10 70 L80 70 Z" fill="#FFD700" stroke="#FF4500" stroke-width="6" filter="url(#shadow)"/>
+  <text x="100" y="115" font-family="Impact, sans-serif" font-size="50" font-weight="bold" font-style="italic" fill="#FF4500" text-anchor="middle" filter="url(#shadow)">POP!</text>
+</svg>
