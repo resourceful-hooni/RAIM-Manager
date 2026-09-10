@@ -444,7 +444,7 @@ export default function SettingsPage() {
             <div className="h-px bg-white/50 w-full" />
             <div className="flex justify-between items-center">
               <span className="text-brand-muted font-bold">개발</span>
-              <span className="text-brand-dark font-black">김지훈</span>
+              <a href="https://kimjihoon.me" target="_blank" rel="noopener noreferrer" className="text-brand-dark font-black hover:underline cursor-pointer">김지훈</a>
             </div>
           </div>
           
@@ -486,8 +486,7 @@ export default function SettingsPage() {
         {/* Footer info */}
         <div className="mt-12 flex flex-col items-center justify-center space-y-6 pb-6">
           <div className="flex flex-col items-center space-y-4">
-            <img src="https://science.seoul.go.kr/RAIM/resource/www/img/footer_logo.png" alt="Seoul Robot & AI Museum" className="h-6 opacity-60" />
-            <img src="https://science.seoul.go.kr/RAIM/resource/www/img/logo_wa.png" alt="Web Accessibility" className="h-8 opacity-50" />
+            <img src="/logo.png" alt="Seoul Robot & AI Museum" className="h-8 opacity-60 object-contain" />
           </div>
           <p className="text-xs font-bold text-brand-muted mt-2">© 2026 Seoul Robot & AI Museum</p>
         </div>
