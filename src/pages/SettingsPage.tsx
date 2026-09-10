@@ -502,7 +502,7 @@ export default function SettingsPage() {
         {/* Footer info */}
         <div className="mt-12 flex flex-col items-center justify-center space-y-6 pb-6">
           <div className="flex flex-col items-center space-y-4">
-            <img src="/logo.png" alt="Seoul Robot & AI Museum" className="h-8 opacity-60 object-contain" />
+            <img src="/raim_logo.png" alt="Seoul Robot & AI Museum" className="h-8 opacity-60 object-contain" />
           </div>
           <p className="text-xs font-bold text-brand-muted mt-2">© 2026 Seoul Robot & AI Museum</p>
         </div>

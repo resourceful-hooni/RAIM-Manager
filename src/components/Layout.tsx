@@ -186,7 +186,7 @@ export default function Layout() {
         <div className="bg-white/50 backdrop-blur-[24px] p-10 rounded-[2rem] shadow-[0_8px_32px_rgba(0,0,0,0.1)] border border-white/80 max-w-sm w-full text-center relative overflow-hidden">
           <div className="w-20 h-20 mx-auto mb-6 bg-white/60 backdrop-blur-md text-brand-dark rounded-2xl flex items-center justify-center border border-white/80 shadow-md overflow-hidden transform rotate-3">
             {!logoError ? (
-              <img src="/logo.png" alt="RAIM Logo" className="w-full h-full object-contain p-2 transform -rotate-3" referrerPolicy="no-referrer" onError={() => setLogoError(true)} />
+              <img src="/raim_logo.png" alt="RAIM Logo" className="w-full h-full object-contain p-2 transform -rotate-3" referrerPolicy="no-referrer" onError={() => setLogoError(true)} />
             ) : (
               <Bot className="w-10 h-10 transform -rotate-3" />
             )}
@@ -203,7 +203,7 @@ export default function Layout() {
           </button>
         </div>
         <div className="mt-8 flex flex-col items-center space-y-3">
-          <img src="/logo.png" alt="Seoul Robot & AI Museum" className="h-8 opacity-60 object-contain" />
+          <img src="/raim_logo.png" alt="Seoul Robot & AI Museum" className="h-8 opacity-60 object-contain" />
           <div className="text-xs text-brand-muted font-medium mt-2">
             © 2026 Seoul Robot & AI Museum
           </div>
@@ -347,7 +347,7 @@ export default function Layout() {
           <NavLink to="/" onClick={handleLogoClick} className="flex items-center space-x-3 hover:opacity-85 transition-opacity group">
             <div className="w-9 h-9 bg-white/60 backdrop-blur-sm text-brand-dark rounded-xl flex items-center justify-center border border-white/80 shadow-sm overflow-hidden shrink-0 group-hover:shadow-md transition-all">
               {!logoError ? (
-                <img src="/logo.png" alt="RAIM Logo" className="w-full h-full object-contain p-1" referrerPolicy="no-referrer" onError={() => setLogoError(true)} />
+                <img src="/raim_logo.png" alt="RAIM Logo" className="w-full h-full object-contain p-1" referrerPolicy="no-referrer" onError={() => setLogoError(true)} />
               ) : (
                 <Bot className="w-5 h-5" />
               )}

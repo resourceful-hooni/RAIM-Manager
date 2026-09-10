@@ -13,7 +13,7 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['pop.svg', 'logo.png', 'logo_wa.png', 'footer_logo.png'],
+        includeAssets: ['pop.svg', 'raim_logo.png', 'logo_wa.png', 'footer_raim_logo.png'],
         workbox: {
           globIgnores: ['**/*.xlsx', '**/sheets/**/*'],
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
@@ -28,7 +28,7 @@ export default defineConfig(({mode}) => {
           theme_color: '#ffffff',
           icons: [
             {
-              src: '/logo.png',
+              src: '/raim_logo.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'any maskable'
