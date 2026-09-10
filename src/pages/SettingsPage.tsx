@@ -76,9 +76,8 @@ export default function SettingsPage() {
   const [isImporting, setIsImporting] = useState(false);
   const [newPin, setNewPin] = useState('');
   const [isPinEditing, setIsPinEditing] = useState(false);
-  const [expandedVersions, setExpandedVersions] = useState<Record<string, boolean>>({
-    '1.9.5': true,
-  });
+  const [expandedVersions, setExpandedVersions] = useState<Record<string, boolean>>({});
+  const [showAllHistory, setShowAllHistory] = useState(false);
 
   const toggleVersion = (version: string) => {
     setExpandedVersions(prev => ({
@@ -462,7 +461,7 @@ export default function SettingsPage() {
             </h4>
             
             <div className="space-y-2">
-              {UPDATE_HISTORY.map((item) => (
+              {(showAllHistory ? UPDATE_HISTORY : UPDATE_HISTORY.slice(0, 3)).map((item) => (
                 <div key={item.version} className="bg-white/50 backdrop-blur-sm rounded-2xl border border-white/60 shadow-sm overflow-hidden">
                   <button 
                     onClick={() => toggleVersion(item.version)}
@@ -486,6 +485,16 @@ export default function SettingsPage() {
                   )}
                 </div>
               ))}
+              
+              {!showAllHistory && UPDATE_HISTORY.length > 3 && (
+                <button 
+                  onClick={() => setShowAllHistory(true)}
+                  className="w-full py-2 text-xs font-bold text-brand-muted hover:text-brand-dark transition-colors flex items-center justify-center space-x-1"
+                >
+                  <span>과거 내역 더보기</span>
+                  <ChevronDown className="w-3 h-3" />
+                </button>
+              )}
             </div>
           </div>
         </div>
