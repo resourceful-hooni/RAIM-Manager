@@ -28,9 +28,10 @@ export default defineConfig(({mode}) => {
           theme_color: '#ffffff',
           icons: [
             {
-              src: 'https://science.seoul.go.kr/RAIM/resource/www/img/favicon32.png',
-              sizes: '32x32',
-              type: 'image/png'
+              src: '/logo.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'any maskable'
             }
           ]
         }

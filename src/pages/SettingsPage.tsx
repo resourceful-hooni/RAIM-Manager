@@ -439,7 +439,7 @@ export default function SettingsPage() {
           <div className="space-y-3 text-sm bg-white/40 backdrop-blur-sm p-4 rounded-2xl border border-white/60 shadow-sm">
             <div className="flex justify-between items-center">
               <span className="text-brand-muted font-bold">버전</span>
-              <span className="text-brand-dark font-black bg-white/80 px-2 py-1 rounded-lg border border-white shadow-sm text-xs">1.9.0</span>
+              <span className="text-brand-dark font-black bg-white/80 px-2 py-1 rounded-lg border border-white shadow-sm text-xs">{UPDATE_HISTORY[0].version}</span>
             </div>
             <div className="h-px bg-white/50 w-full" />
             <div className="flex justify-between items-center">
