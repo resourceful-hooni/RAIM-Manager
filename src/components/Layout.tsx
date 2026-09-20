@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, NavLink } from 'react-router';
-import { Home, BarChart2, Clock, Settings, Wifi, WifiOff, LogIn, LogOut, Bot, ChevronRight, Car, Coffee, RefreshCw, KeyRound, BookOpen, X } from 'lucide-react';
+import { Home, BarChart2, Clock, ClipboardList, Settings, Wifi, WifiOff, LogIn, LogOut, Bot, ChevronRight, Car, Coffee, RefreshCw, KeyRound, BookOpen, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'motion/react';
 import { cn, validatePin } from '@/lib/utils';
@@ -414,6 +414,7 @@ export default function Layout() {
           <NavItem to="/" icon={<Home className="w-5 h-5" />} label="카운터" />
           <NavItem to="/dashboard" icon={<BarChart2 className="w-5 h-5" />} label="대시보드" />
           <NavItem to="/history" icon={<Clock className="w-5 h-5" />} label="기록" />
+          <NavItem to="/attendance" icon={<ClipboardList className="w-5 h-5" />} label="출석부" />
           <NavItem to="/settings" icon={<Settings className="w-5 h-5" />} label="설정" />
         </div>
       </nav>

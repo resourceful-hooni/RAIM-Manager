@@ -5,6 +5,21 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * 인라인된 엑셀 템플릿(base64)을 ArrayBuffer로 디코딩한다.
+ * 서비스 워커가 이진 xlsx를 UTF-8로 캐싱해 손상시키는 문제를 피하려고
+ * 템플릿을 base64로 번들에 넣어두고 이 함수로 복원한다.
+ */
+export function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
 export function validatePin(pin: string): { isValid: boolean; error?: string } {
   if (!/^\d+$/.test(pin)) {
     return { isValid: false, error: '비밀번호는 숫자만 입력 가능합니다.' };
