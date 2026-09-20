@@ -88,9 +88,21 @@ export const formatPhone = (raw: unknown): string => {
   return cellText(raw);
 };
 
+/** 예약 시스템이 &amp; &#39; 같은 HTML 엔티티를 그대로 내보내는 경우가 있어 되돌린다 */
+const decodeHtmlEntities = (text: string): string =>
+  text
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)))
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&');
+
 /** "[8세 이상] 라임북스 : 움직이는 동화책" → "라임북스 : 움직이는 동화책" */
 export const stripAgePrefix = (sessionLabel: string): string =>
-  cellText(sessionLabel).replace(/^\[[^\]]*\]\s*/, '');
+  decodeHtmlEntities(cellText(sessionLabel)).replace(/^\[[^\]]*\]\s*/, '');
 
 /** "라임북스 : 움직이는 동화책" → "라임북스" (파일명·시트명용) */
 export const toShortProgramName = (programName: string): string => {
@@ -125,10 +137,15 @@ export const buildCompositionNote = (entry: Pick<ReservationEntry, 'adult' | 'yo
     .map(([label, count]) => `${label}${count}`)
     .join(', ');
 
-/** 출석부 제목 ("0920 위크앤드_라임북스 : 움직이는 동화책") */
-export const buildAttendanceTitle = (group: ReservationGroup, label: string): string => {
+/**
+ * 출석부 제목 ("0920 위크앤드_라임북스 : 움직이는 동화책")
+ * 같은 날 같은 프로그램이 두 회차 이상이면 제목만으로 구분되지 않으므로 시간을 덧붙인다.
+ */
+export const buildAttendanceTitle = (group: ReservationGroup, label: string, withTime = false): string => {
   const trimmed = label.trim();
-  return trimmed ? `${group.mmdd} ${trimmed}_${group.programName}` : `${group.mmdd}_${group.programName}`;
+  const head = trimmed ? `${group.mmdd} ${trimmed}` : group.mmdd;
+  const time = withTime && group.timeRange ? ` (${group.timeRange})` : '';
+  return `${head}_${group.programName}${time}`;
 };
 
 /** 헤더 행에서 컬럼 인덱스를 찾는다 (컬럼 순서가 바뀌어도 동작하도록) */

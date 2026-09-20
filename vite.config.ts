@@ -12,7 +12,10 @@ export default defineConfig(({mode}) => {
       react(), 
       tailwindcss(),
       VitePWA({
-        registerType: 'autoUpdate',
+        // 'prompt': 새 워커를 대기시켜 두고 직원이 새로고침을 누를 때 적용한다.
+        // autoUpdate + skipWaiting 조합에서는 새 워커가 즉시 활성화되며 실행 중인
+        // 빌드의 청크를 프리캐시에서 지워, 다른 탭을 누르는 순간 청크 404로 앱이 죽었다.
+        registerType: 'prompt',
         // logo_wa.png(50KB)은 어디에서도 렌더되지 않는데 설치할 때마다
         // 프리캐시되고 있었다. 제거.
         includeAssets: ['pop.svg', 'raim_logo.png', 'footer_logo.png', 'app-icon.svg', 'favicon32.png', 'apple-touch-icon.png'],
@@ -24,8 +27,8 @@ export default defineConfig(({mode}) => {
           globPatterns: ['**/*.{js,css,html,woff2}'],
           globIgnores: ['**/*.xlsx', '**/sheets/**/*'],
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
-          clientsClaim: true,
-          skipWaiting: true,
+          clientsClaim: false,
+          skipWaiting: false,
           navigateFallbackDenylist: [/\.xlsx$/, /^\/sheets/, /^\/api/]
         },
         manifest: {

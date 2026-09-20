@@ -254,7 +254,9 @@ export default function CounterPage() {
   // 실시간 연동이 관람 모드/회차를 바꾸면 조용히 넘어가지 않고 알린다.
   // 연동 로직은 건드리지 않고 결과만 관찰한다.
   useEffect(() => {
-    const target = `${type}|${session}`;
+    // 날짜까지 포함해야 한다. 자정을 넘겨 연동이 날짜를 옮기면 같은 회차 이름이라도
+    // 전혀 다른 기록에 입력되는데, 날짜를 빼면 그 전환을 알리지 못한다.
+    const target = `${date}|${type}|${session}`;
     const prev = prevTargetRef.current;
     prevTargetRef.current = target;
 
@@ -269,10 +271,18 @@ export default function CounterPage() {
     // 첫 렌더 직후 연동이 현재 시각에 맞추는 것은 '변경'이 아니라 초기 설정이다
     if (Date.now() - mountedAtRef.current < 1500) return;
 
-    toast.info(`입력 대상이 ${TYPE_LABELS[type]} · ${session}(으)로 바뀌었습니다.`, {
-      description: '실시간 연동이 시각에 맞춰 회차를 바꿨습니다. 카운트할 회차가 맞는지 확인해 주세요.',
-    });
-  }, [type, session]);
+    const dateChanged = prev.split('|')[0] !== date;
+    toast.info(
+      dateChanged
+        ? `입력 대상이 ${date} · ${TYPE_LABELS[type]} · ${session}(으)로 바뀌었습니다.`
+        : `입력 대상이 ${TYPE_LABELS[type]} · ${session}(으)로 바뀌었습니다.`,
+      {
+        description: dateChanged
+          ? '날짜가 바뀌었습니다. 입력할 날짜가 맞는지 먼저 확인해 주세요.'
+          : '실시간 연동이 시각에 맞춰 회차를 바꿨습니다. 카운트할 회차가 맞는지 확인해 주세요.',
+      },
+    );
+  }, [date, type, session]);
 
   const record = useStore(useCallback((state: any) => state.records.find((r: any) => r.date === date && r.type === type && r.session === session && (r.program || '무인자동차') === activeProgram), [date, type, session, activeProgram])) as any;
   const rawCounts = record?.counts || INITIAL_COUNTS;
@@ -377,14 +387,14 @@ export default function CounterPage() {
 
   const handleSessionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     // 직접 고른 회차는 변경 안내(toast) 대상이 아니다
-    userSetTargetRef.current = `${type}|${e.target.value}`;
+    userSetTargetRef.current = `${date}|${type}|${e.target.value}`;
     setIsAutoSync(false);
     setSession(e.target.value);
   };
 
   // 관람 모드를 바꾸면 회차도 함께 바뀐다. 조용히 바뀌지 않도록 바뀐 대상을 알린다.
   const announceTarget = (nextType: RecordType, nextSession: string, description?: string) => {
-    userSetTargetRef.current = `${nextType}|${nextSession}`;
+    userSetTargetRef.current = `${date}|${nextType}|${nextSession}`;
     toast.info(
       `입력 대상: ${TYPE_LABELS[nextType]} · ${nextSession}`,
       description ? { description } : undefined

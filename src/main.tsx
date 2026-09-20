@@ -131,9 +131,8 @@ function promptRefresh() {
 }
 
 const updateSW = registerSW({
-  // autoUpdate 모드는 기본적으로 새 워커가 활성화되면 즉시 새로고침한다.
-  // onNeedReload를 넘겨 그 자동 새로고침을 막고 직원에게 먼저 묻는다.
-  onNeedReload: promptRefresh,
+  // prompt 모드: 새 버전이 대기 상태가 되면 알리고, 직원이 새로고침을 누를 때 적용한다.
+  // 그 전까지는 실행 중인 빌드의 청크가 프리캐시에 그대로 남는다.
   onNeedRefresh: promptRefresh,
   onOfflineReady() {
     console.log('App is ready to work offline');
@@ -156,9 +155,13 @@ function lazyPage(load: () => Promise<PageModule>) {
       // 한 번 더 시도하고, 그래도 실패하면 새로고침을 안내한 뒤 오류 경계로 넘긴다.
       try {
         return await load();
-      } catch (retryError) {
-        promptRefresh();
-        throw retryError;
+      } catch {
+        // 여기까지 왔으면 이전 빌드의 청크가 서버에서 사라진 경우다.
+        // 오류 경계로 던지면 카운터까지 통째로 내려가므로, 집계는 이미 Firestore에
+        // 기록돼 있는 만큼 새 빌드로 새로고침해 스스로 복구한다.
+        applyUpdateAndReload();
+        // 새로고침이 진행되는 동안 화면을 그대로 두기 위해 영원히 대기한다
+        return await new Promise<PageModule>(() => {});
       }
     }
   });

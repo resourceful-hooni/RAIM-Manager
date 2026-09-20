@@ -20,10 +20,14 @@ import { ReservationGroup, buildSmsList } from './reservationUtils';
  */
 
 /** 출석부 xlsx 내려받기 */
-export const downloadAttendanceXlsx = async (group: ReservationGroup, label: string): Promise<string> => {
-  const workbook = await buildAttendanceWorkbook(group, label);
+export const downloadAttendanceXlsx = async (
+  group: ReservationGroup,
+  label: string,
+  withTime = false,
+): Promise<string> => {
+  const workbook = await buildAttendanceWorkbook(group, label, undefined, withTime);
   const buffer = await workbook.xlsx.writeBuffer();
-  const fileName = attendanceFileName(group, label);
+  const fileName = attendanceFileName(group, label, withTime);
   saveAs(new Blob([buffer], { type: XLSX_MIME }), fileName);
   return fileName;
 };
@@ -32,10 +36,11 @@ export const downloadAttendanceXlsx = async (group: ReservationGroup, label: str
 export const downloadSmsCsv = async (
   group: ReservationGroup,
   encoding: CsvEncoding = 'cp949',
+  withTime = false,
 ): Promise<{ fileName: string; count: number; unsupportedCount: number }> => {
   const list = buildSmsList(group.entries);
   const { bytes, unsupportedCount } = await buildSmsCsvBytes(list, encoding);
-  const fileName = smsFileName(group);
+  const fileName = smsFileName(group, withTime);
   // Blob 생성 시 브라우저가 문자열로 재해석하지 않도록 바이트 그대로 넘긴다
   saveAs(new Blob([bytes], { type: 'text/csv' }), fileName);
   return { fileName, count: list.length, unsupportedCount };

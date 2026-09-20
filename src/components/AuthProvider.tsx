@@ -11,10 +11,14 @@ import { doc, getDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { auth, db } from '@/lib/firebase';
 
-/** 팝업을 띄울 수 없는 환경(팝업 차단, 인앱 브라우저 등)에서 나오는 오류 코드 */
+/**
+ * 팝업을 띄울 수 없는 환경(팝업 차단, 인앱 브라우저 등)에서 나오는 오류 코드.
+ * auth/cancelled-popup-request 는 여기에 넣으면 안 된다. 그 코드는 팝업이 막힌 게 아니라
+ * 사용자가 로그인 버튼을 연달아 눌러 앞선 팝업이 취소됐다는 뜻이고,
+ * 두 번째 팝업은 정상 동작 중이다. 리디렉션으로 넘기면 그 팝업까지 날아간다.
+ */
 const POPUP_UNAVAILABLE_CODES = [
   'auth/popup-blocked',
-  'auth/cancelled-popup-request',
   'auth/operation-not-supported-in-this-environment',
 ];
 
@@ -48,7 +52,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe;
   }, []);
 
+  // 로그인 버튼 연타로 팝업이 서로를 취소하지 않도록 한 번에 하나만 진행한다
+  const signInInFlight = React.useRef(false);
+
   const signIn = async () => {
+    if (signInInFlight.current) return;
+    signInInFlight.current = true;
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
@@ -73,7 +82,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // 버튼을 연달아 눌러 앞선 팝업이 취소된 경우. 새 팝업이 살아 있으므로 조용히 넘긴다.
+      if (code === 'auth/cancelled-popup-request') return;
+
       toast.error(`로그인에 실패했습니다. (${code || 'unknown'})`);
+    } finally {
+      signInInFlight.current = false;
     }
   };
 

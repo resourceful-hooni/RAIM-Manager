@@ -90,6 +90,16 @@ export default function AttendancePage() {
 
   const totalEntries = groups.reduce((sum, group) => sum + group.entries.length, 0);
 
+  // 같은 날 같은 프로그램이 두 회차 이상이면 파일명·제목이 겹치므로 시간을 덧붙인다
+  const needsTime = useMemo(() => {
+    const seen = new Map<string, number>();
+    groups.forEach((group) => {
+      const key = `${group.mmdd}__${group.programShortName}`;
+      seen.set(key, (seen.get(key) ?? 0) + 1);
+    });
+    return (group: ReservationGroup) => (seen.get(`${group.mmdd}__${group.programShortName}`) ?? 0) > 1;
+  }, [groups]);
+
   /**
    * 파일 선택·드래그앤드롭 공통 처리.
    * 폴더나 ZIP을 받으면 안에 든 엑셀까지 꺼내서 한 번에 변환한다.
@@ -140,13 +150,20 @@ export default function AttendancePage() {
         toast.success(`${parsed.length}개 회차를 불러왔습니다.`);
       }
 
-      failures.forEach(({ fileName, message }) => {
-        toast.error(`${fileName}: ${message}`);
-      });
+      if (failures.length === 1) {
+        // 파일명에는 사람 이름이 들어 있을 수 있어 화면에 그대로 띄우지 않는다
+        toast.error(failures[0].message);
+      } else if (failures.length > 1) {
+        toast.error(`${failures.length}개 파일을 읽지 못했습니다. 예약현황조회 원본 파일인지 확인해 주세요.`);
+      }
 
       if (skipped.length > 0) {
         toast.warning(`엑셀이 아니어서 건너뛴 파일 ${skipped.length}개가 있습니다.`);
       }
+    } catch {
+      // 압축 해제·파일 읽기 자체가 실패하면 여기로 온다.
+      // 잡지 않으면 처리 중 상태가 풀리지 않아 업로드 버튼이 영영 눌리지 않는다.
+      toast.error('파일을 읽지 못했습니다. 파일을 다시 선택해 주세요.');
     } finally {
       setIsProcessing(false);
     }
@@ -159,8 +176,12 @@ export default function AttendancePage() {
       const file = fileList?.item(index);
       if (file) files.push(file);
     }
-    await ingestFiles(files);
-    event.target.value = '';
+    try {
+      await ingestFiles(files);
+    } finally {
+      // 같은 파일을 다시 선택해도 change 이벤트가 오도록 항상 비운다
+      event.target.value = '';
+    }
   };
 
   // 드래그가 자식 요소를 지날 때마다 leave가 발생해, 깊이를 세어 깜빡임을 막는다
@@ -205,7 +226,7 @@ export default function AttendancePage() {
     try {
       setIsProcessing(true);
       toast.info('파일 생성 중...');
-      await downloadAttendanceXlsx(group, label);
+      await downloadAttendanceXlsx(group, label, needsTime(group));
       toast.success(`출석부를 내려받았습니다. (${group.entries.length}건 / ${group.totalHeadcount}명)`);
     } catch {
       toast.error('출석부를 만드는 중 오류가 발생했습니다.');
@@ -221,7 +242,7 @@ export default function AttendancePage() {
     }
     try {
       setIsProcessing(true);
-      const { count, unsupportedCount } = await downloadSmsCsv(group, csvEncoding);
+      const { count, unsupportedCount } = await downloadSmsCsv(group, csvEncoding, needsTime(group));
       toast.success(`문자발송 명단을 내려받았습니다. (${count}건)`);
       if (unsupportedCount > 0) {
         toast.warning(`${unsupportedCount}건은 CP949로 표현할 수 없는 글자가 있어 ?로 바뀌었습니다.`);
@@ -241,8 +262,8 @@ export default function AttendancePage() {
     }
     // 파일명에는 회차 정보만 들어가고 신청자 정보는 담기지 않는다 (실패 안내에 그대로 써도 안전)
     const tasks = targets.flatMap((group) => [
-      { fileName: attendanceFileName(group, label), run: () => downloadAttendanceXlsx(group, label) },
-      { fileName: smsFileName(group), run: () => downloadSmsCsv(group, csvEncoding) },
+      { fileName: attendanceFileName(group, label, needsTime(group)), run: () => downloadAttendanceXlsx(group, label) },
+      { fileName: smsFileName(group, needsTime(group)), run: () => downloadSmsCsv(group, csvEncoding) },
     ]);
 
     try {
@@ -594,7 +615,7 @@ export default function AttendancePage() {
               </div>
 
               <p className="text-2xs font-medium text-brand-muted mt-3 leading-relaxed">
-                파일명: {attendanceFileName(group, label)} · {smsFileName(group)}
+                파일명: {attendanceFileName(group, label, needsTime(group))} · {smsFileName(group, needsTime(group))}
               </p>
             </div>
           ))}

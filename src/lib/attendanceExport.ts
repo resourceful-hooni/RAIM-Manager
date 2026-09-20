@@ -48,14 +48,21 @@ export interface SmsCsvResult {
 /** 윈도우 파일명에 못 쓰는 문자 제거 */
 const sanitizeFileName = (name: string): string => name.replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
 
-export const attendanceFileName = (group: ReservationGroup, label: string): string => {
-  const trimmed = label.trim();
-  const head = trimmed ? `${group.mmdd} ${trimmed} 출석부` : `${group.mmdd} 출석부`;
-  return `${sanitizeFileName(`${head}_${group.programShortName}`)}.xlsx`;
+/** 같은 날 같은 프로그램이 두 회차 이상이면 이름이 겹치므로 시작 시각을 덧붙인다 */
+const sessionSuffix = (group: ReservationGroup): string => {
+  const start = group.timeRange.match(/(\d{1,2}):(\d{2})/);
+  return start ? ` ${start[1].padStart(2, '0')}${start[2]}` : '';
 };
 
-export const smsFileName = (group: ReservationGroup): string =>
-  `${sanitizeFileName(`문자발송_${group.programShortName}`)}.csv`;
+export const attendanceFileName = (group: ReservationGroup, label: string, withTime = false): string => {
+  const trimmed = label.trim();
+  const head = trimmed ? `${group.mmdd} ${trimmed} 출석부` : `${group.mmdd} 출석부`;
+  const tail = `${group.programShortName}${withTime ? sessionSuffix(group) : ''}`;
+  return `${sanitizeFileName(`${head}_${tail}`)}.xlsx`;
+};
+
+export const smsFileName = (group: ReservationGroup, withTime = false): string =>
+  `${sanitizeFileName(`${group.mmdd} 문자발송_${group.programShortName}${withTime ? sessionSuffix(group) : ''}`)}.csv`;
 
 /**
  * 템플릿을 읽어 출석부 워크북을 만든다.
@@ -65,6 +72,7 @@ export const buildAttendanceWorkbook = async (
   group: ReservationGroup,
   label: string,
   templateData: ArrayBuffer = base64ToArrayBuffer(ATTENDANCE_TEMPLATE_BASE64),
+  withTime = false,
 ): Promise<ExcelJS.Workbook> => {
   const workbook = new ExcelJS.Workbook();
   try {
@@ -80,7 +88,7 @@ export const buildAttendanceWorkbook = async (
 
   const sheet = workbook.worksheets[0];
   if (!sheet) throw new Error('출석부 양식에 시트가 없습니다.');
-  sheet.name = group.programShortName;
+  sheet.name = `${group.programShortName}${withTime ? sessionSuffix(group) : ''}`.slice(0, 31);
 
   const entries = group.entries;
   const rowCount = Math.max(entries.length, 1);
@@ -88,7 +96,7 @@ export const buildAttendanceWorkbook = async (
   // 템플릿의 빈 데이터 행(3행) 서식을 그대로 복제해 필요한 만큼 늘린다
   if (rowCount > 1) sheet.duplicateRow(FIRST_DATA_ROW, rowCount - 1, true);
 
-  sheet.getCell(TITLE_CELL).value = buildAttendanceTitle(group, label);
+  sheet.getCell(TITLE_CELL).value = buildAttendanceTitle(group, label, withTime);
 
   entries.forEach((entry, index) => {
     const row = sheet.getRow(FIRST_DATA_ROW + index);
