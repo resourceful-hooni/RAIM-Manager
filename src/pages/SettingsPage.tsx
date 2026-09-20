@@ -391,7 +391,7 @@ export default function SettingsPage() {
                 </div>
                 <button
                   onClick={() => setIsPinEditing(true)}
-                  className="min-h-11 bg-white/80 border border-white hover:bg-white text-brand-dark px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95"
+                  className="bg-white/80 border border-white hover:bg-white text-brand-dark px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95"
                 >
                   비밀번호 변경
                 </button>
@@ -416,7 +416,7 @@ export default function SettingsPage() {
                       setIsPinEditing(false);
                       setNewPin('');
                     }}
-                    className="min-h-11 bg-white/60 border border-white/60 hover:bg-white/80 text-brand-muted hover:text-brand-dark px-3 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95"
+                    className="bg-white/60 border border-white/60 hover:bg-white/80 text-brand-muted hover:text-brand-dark px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
                   >
                     취소
                   </button>
@@ -532,7 +532,7 @@ export default function SettingsPage() {
               {!showAllHistory && UPDATE_HISTORY.length > 3 && (
                 <button 
                   onClick={() => setShowAllHistory(true)}
-                  className="w-full min-h-11 py-2 text-xs font-bold text-brand-muted hover:text-brand-dark transition-colors flex items-center justify-center space-x-1"
+                  className="w-full py-1.5 text-xs font-bold text-brand-muted hover:text-brand-dark transition-colors flex items-center justify-center space-x-1"
                 >
                   <span>과거 내역 더보기</span>
                   <ChevronDown className="w-3 h-3" />

@@ -635,7 +635,7 @@ export default function DashboardPage() {
                   id="rotate-ai-insight-btn"
                   onClick={() => setRefreshSeed(prev => prev + 1)}
                   disabled={isAiLoading}
-                  className="flex items-center justify-center space-x-1 px-3 min-h-11 text-2xs font-bold text-brand-blue bg-brand-blue/10 hover:bg-brand-blue/20 transition-all border border-brand-blue/20 active:scale-95 disabled:opacity-50 cursor-pointer rounded-xl shrink-0"
+                  className="flex items-center justify-center space-x-1 px-2 py-0.5 text-2xs font-bold text-brand-blue bg-brand-blue/10 hover:bg-brand-blue/20 transition-all border border-brand-blue/20 active:scale-95 disabled:opacity-50 cursor-pointer rounded-md shrink-0"
                   title="다른 주제 분석 보기"
                 >
                   <RefreshCw className={cn("w-2.5 h-2.5", isAiLoading && "animate-spin")} />
@@ -749,7 +749,7 @@ export default function DashboardPage() {
                       setSummaryFilterType(opt.value as 'all' | 'autonomous' | 'reserved');
                     }}
                     className={cn(
-                      "px-2.5 sm:px-3 min-h-11 rounded-lg text-2xs sm:text-xs font-bold transition-all whitespace-nowrap active:scale-95 cursor-pointer relative z-30 border",
+                      "px-2.5 sm:px-3 py-1.5 rounded-lg text-2xs sm:text-xs font-bold transition-all whitespace-nowrap active:scale-95 cursor-pointer relative z-30 border",
                       summaryFilterType === opt.value
                         ? SEGMENT_ACTIVE
                         : SEGMENT_INACTIVE
@@ -852,7 +852,7 @@ export default function DashboardPage() {
                     key={opt.value}
                     onClick={() => setBreakdownFilterType(opt.value as any)}
                     className={cn(
-                      "px-3 min-h-11 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 border relative z-10",
+                      "px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 border relative z-10",
                       breakdownFilterType === opt.value
                         ? SEGMENT_ACTIVE
                         : SEGMENT_INACTIVE
@@ -911,7 +911,7 @@ export default function DashboardPage() {
                     key={opt.value}
                     onClick={() => setChartFilterType(opt.value as any)}
                     className={cn(
-                      "px-3 min-h-11 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 border",
+                      "px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 border",
                       chartFilterType === opt.value
                         ? SEGMENT_ACTIVE
                         : SEGMENT_INACTIVE
@@ -938,7 +938,7 @@ export default function DashboardPage() {
                     key={opt.value}
                     onClick={() => setChartDisplayMode(opt.value as any)}
                     className={cn(
-                      "px-3 min-h-11 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 border",
+                      "px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 border",
                       chartDisplayMode === opt.value
                         ? SEGMENT_ACTIVE
                         : SEGMENT_INACTIVE

@@ -467,7 +467,7 @@ export default function CounterPage() {
           <button
             onClick={() => setIsAutoSync(!isAutoSync)}
             className={cn(
-              "flex items-center space-x-1.5 text-xs min-h-11 px-3.5 rounded-full transition-all active:scale-95",
+              "flex items-center space-x-1.5 text-xs px-3 py-1.5 rounded-full transition-all active:scale-95",
               isAutoSync
                 ? "bg-brand-cyan/20 text-brand-dark font-bold border border-brand-cyan/30 shadow-sm backdrop-blur-sm"
                 : "bg-white/50 text-brand-muted hover:bg-white/80 font-medium border border-white/60 backdrop-blur-sm"
@@ -560,7 +560,7 @@ export default function CounterPage() {
           const catTotal = (counts[cat.fields[0].id] as number) + (counts[cat.fields[1].id] as number);
 
           return (
-            <div key={cat.id} className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-2.5 sm:p-3 relative overflow-hidden">
+            <div key={cat.id} className="bg-white/55 border border-white/70 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-2.5 sm:p-3 relative overflow-hidden">
               <div className="flex justify-between items-center gap-1 mb-2 px-0.5">
                 <span className="flex items-center gap-1.5 text-brand-dark font-extrabold text-xs min-w-0">
                   <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", cat.color)} aria-hidden="true" />
@@ -630,7 +630,7 @@ export default function CounterPage() {
       <div className="space-y-3 sm:space-y-4">
         {type === 'reserved' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 sm:gap-3">
-            <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-3 sm:p-3.5 flex items-center justify-between gap-2">
+            <div className="bg-white/55 border border-white/70 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-3 sm:p-3.5 flex items-center justify-between gap-2">
               <div className="flex items-center space-x-3 min-w-0">
                 <div className="bg-white/50 p-2.5 rounded-xl text-rose-600 shadow-sm border border-white/60 shrink-0">
                   <Users className="w-5 h-5" aria-hidden="true" />
@@ -672,7 +672,7 @@ export default function CounterPage() {
               </div>
             </div>
 
-            <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-3 sm:p-3.5 flex items-center justify-between gap-2">
+            <div className="bg-white/55 border border-white/70 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-3 sm:p-3.5 flex items-center justify-between gap-2">
               <div className="flex items-center space-x-3 min-w-0">
                 <div className="bg-white/50 p-2.5 rounded-xl text-amber-700 shadow-sm border border-white/60 shrink-0">
                   <Users className="w-5 h-5" aria-hidden="true" />

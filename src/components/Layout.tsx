@@ -328,12 +328,12 @@ export default function Layout() {
                   setPinInput('');
                   setPinError(false);
                 }}
-                className="inline-flex items-center justify-center min-h-11 px-3 rounded-xl text-xs text-brand-blue font-bold hover:text-brand-dark hover:bg-white/50 transition-colors"
+                className="inline-flex items-center justify-center px-2.5 py-1.5 rounded-xl text-xs text-brand-blue font-bold hover:text-brand-dark hover:bg-white/50 transition-colors"
               >
                 {isPinResetMode ? '로그인으로 돌아가기' : '비밀번호 초기화 (최고 관리자)'}
               </button>
             )}
-            <button type="button" onClick={handleSignOut} className="inline-flex items-center justify-center min-h-11 px-3 rounded-xl text-xs text-brand-muted font-bold hover:text-brand-dark hover:bg-white/50 transition-colors">
+            <button type="button" onClick={handleSignOut} className="inline-flex items-center justify-center px-2.5 py-1.5 rounded-xl text-xs text-brand-muted font-bold hover:text-brand-dark hover:bg-white/50 transition-colors">
               다른 계정으로 로그인
             </button>
           </div>
