@@ -15,6 +15,7 @@
    - `exportUtils.ts`의 `showDiagnosticsModal`은 파일 원본 바이트를 화면과 클립보드에 노출하므로 이 기능에서 절대 재사용하지 마십시오.
    - 출석부 양식도 1번 규칙과 같은 이유로 `src/lib/attendanceTemplateBase64.ts`에 인라인되어 있습니다. 양식을 고쳤다면 `public/sheets/출석부양식.xlsx`를 수정한 뒤 `node scripts/generate-attendance-template.mjs`로 다시 생성하십시오. (서비스 워커가 이진 xlsx를 손상시키는 문제 때문에 `fetch` 방식으로 되돌리면 안 됩니다.)
    - 문자발송 CSV는 문자발송 프로그램 규격에 맞춰 **CP949 인코딩·CRLF·헤더 없음**을 유지해야 합니다. UTF-8 BOM을 넣으면 안 됩니다.
+   - `public/sheets/출석부양식.xlsx`는 **엑셀이나 ExcelJS로만 편집**하십시오. openpyxl(파이썬)로 저장한 양식을 쓰면 그 양식으로 만든 출석부를 엑셀이 복구하려 듭니다. 양식을 고친 뒤에는 반드시 실제 엑셀에서 결과물을 열어 확인하십시오.
 
 4. **GitHub Push 및 배포 규칙**:
    - Agent가 코드를 Github에 직접 Push할 때 `fatal: could not read Username for 'https://github.com': No such device or address`와 같은 인증 에러가 빈번하게 발생할 수 있습니다.

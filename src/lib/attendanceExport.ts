@@ -102,11 +102,15 @@ export const buildAttendanceWorkbook = async (
   });
 
   const totalRow = FIRST_DATA_ROW + rowCount;
+  // 합계 행도 데이터 행과 같은 높이로 맞춘다
+  sheet.getRow(totalRow).height = sheet.getRow(FIRST_DATA_ROW).height;
   sheet.getCell(`E${totalRow}`).value = {
     formula: `SUM(E${FIRST_DATA_ROW}:E${totalRow - 1})`,
     result: group.totalHeadcount,
   };
-  sheet.pageSetup.printArea = `A1:L${totalRow}`;
+  // ExcelJS는 시작/끝 앞에만 '$'를 붙이므로, 행에도 '$'를 직접 넣어 절대참조로 만든다
+  // ('$A$1:$L$8' 형태여야 엑셀이 인쇄영역으로 인식한다)
+  sheet.pageSetup.printArea = `A$1:L$${totalRow}`;
 
   return workbook;
 };
