@@ -487,7 +487,7 @@ export default function CounterPage() {
             )}
             onClick={() => handleTypeChange('autonomous')}
           >
-            자율관람 (Autonomous)
+            자율관람<span className="hidden sm:inline"> (Autonomous)</span>
           </button>
           <button
             aria-pressed={type === 'reserved'}
@@ -497,7 +497,7 @@ export default function CounterPage() {
             )}
             onClick={() => handleTypeChange('reserved')}
           >
-            예약관람 (Reserved)
+            예약관람<span className="hidden sm:inline"> (Reserved)</span>
           </button>
         </div>
 
@@ -508,7 +508,7 @@ export default function CounterPage() {
             onChange={handleDateChange}
             aria-label="카운트할 날짜"
             className={cn(
-              "bg-white/50 backdrop-blur-[16px] border border-white/60 rounded-xl px-4 min-h-11 text-sm font-medium text-brand-dark flex-1 transition-all shadow-sm",
+              "bg-white/50 backdrop-blur-[16px] border border-white/60 rounded-xl px-3 sm:px-4 min-h-11 text-sm font-medium text-brand-dark flex-1 min-w-0 transition-all shadow-sm",
               isAutoSync ? "border-brand-cyan/30" : "border-white/60"
             )}
           />
@@ -521,13 +521,13 @@ export default function CounterPage() {
               <span className="text-2xs bg-brand-blue/90 text-white px-2 py-0.5 rounded-full shadow-sm shrink-0">자동</span>
             </div>
           ) : (
-            <div className="relative flex-1">
+            <div className="relative flex-1 min-w-0">
               <select
                 value={session}
                 onChange={handleSessionChange}
                 aria-label="카운트할 회차"
                 className={cn(
-                  "w-full bg-white/50 backdrop-blur-[16px] border border-white/60 rounded-xl pl-4 pr-10 min-h-11 text-sm font-medium text-brand-dark transition-all shadow-sm appearance-none",
+                  "w-full bg-white/50 backdrop-blur-[16px] border border-white/60 rounded-xl pl-3 sm:pl-4 pr-8 sm:pr-10 min-h-11 text-sm font-medium text-brand-dark transition-all shadow-sm appearance-none",
                   isAutoSync ? "border-brand-cyan/30" : "border-white/60"
                 )}
               >
@@ -536,7 +536,7 @@ export default function CounterPage() {
                 ))}
               </select>
               <ChevronDown
-                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted"
+                className="pointer-events-none absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted"
                 aria-hidden="true"
               />
             </div>
@@ -550,7 +550,7 @@ export default function CounterPage() {
         className="w-full flex items-center justify-center space-x-2 min-h-11 py-3 rounded-xl text-brand-blue bg-white/40 backdrop-blur-xl hover:bg-white/80 transition-all text-sm font-bold border border-white/60 shadow-[0_4px_20px_rgba(0,0,0,0.03)] active:scale-95"
       >
         <Users className="w-5 h-5" aria-hidden="true" />
-        <span>단체 입력 모드 (한 번에 여러 명 입력)</span>
+        <span>단체 입력<span className="hidden sm:inline"> 모드 (한 번에 여러 명 입력)</span></span>
       </button>
 
       {/* Counters */}
@@ -562,9 +562,11 @@ export default function CounterPage() {
           return (
             <div key={cat.id} className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-2.5 sm:p-3 relative overflow-hidden">
               <div className="flex justify-between items-center gap-1 mb-2 px-0.5">
-                <span className="flex items-center gap-1.5 text-brand-dark font-extrabold text-xs tracking-tight min-w-0">
+                <span className="flex items-center gap-1.5 text-brand-dark font-extrabold text-xs min-w-0">
                   <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", cat.color)} aria-hidden="true" />
-                  <span className="truncate">{catName}</span>
+                  {/* 자간을 좁히지 않고 오른쪽 여유를 둔다. 글자 폭과 상자 폭이 똑같으면
+                      마지막 글자 오른쪽이 1px 잘려 보였다. */}
+                  <span className="truncate pr-0.5">{catName}</span>
                 </span>
                 <span className="tnum text-xl font-black text-brand-black tracking-tighter leading-none">
                   <motion.span
@@ -635,7 +637,7 @@ export default function CounterPage() {
                 </div>
                 <div className="min-w-0">
                   <h3 className="text-sm font-bold text-brand-dark">취소</h3>
-                  <p className="text-2xs text-brand-muted font-medium">예약 취소 인원</p>
+                  <p className="hidden sm:block text-2xs text-brand-muted font-medium">예약 취소 인원</p>
                 </div>
               </div>
               <div className="flex items-center space-x-2 shrink-0">
@@ -677,7 +679,7 @@ export default function CounterPage() {
                 </div>
                 <div className="min-w-0">
                   <h3 className="text-sm font-bold text-brand-dark">노쇼 (No-show)</h3>
-                  <p className="text-2xs text-brand-muted font-medium">예약 후 방문하지 않은 인원</p>
+                  <p className="hidden sm:block text-2xs text-brand-muted font-medium">예약 후 방문하지 않은 인원</p>
                 </div>
               </div>
               <div className="flex items-center space-x-2 shrink-0">
