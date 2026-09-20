@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { useStore, RecordType, Counts, ProgramType } from '@/store/useStore';
 import { vibrate, cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { RotateCcw, Plus, Minus, FileText, Clock, Users, Undo2, X, ChevronDown, CalendarClock } from 'lucide-react';
+import { RotateCcw, Plus, Minus, FileText, Clock, Users, Undo2, X, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 // 스케줄 설정
@@ -72,28 +72,28 @@ const CATEGORIES: { id: string; label: string; color: string; addButton: string;
     id: 'adult', 
     label: '성인 (Adult)', 
     color: 'bg-blue-500',
-    addButton: 'bg-blue-700 hover:bg-blue-800',
+    addButton: 'bg-blue-500 hover:bg-blue-600',
     fields: [{ id: 'adult_m', label: '남' }, { id: 'adult_f', label: '여' }]
   },
   { 
     id: 'youth', 
     label: '청소년 (Youth)', 
     color: 'bg-emerald-500',
-    addButton: 'bg-emerald-700 hover:bg-emerald-800',
+    addButton: 'bg-emerald-500 hover:bg-emerald-600',
     fields: [{ id: 'youth_m', label: '남' }, { id: 'youth_f', label: '여' }]
   },
   { 
     id: 'child', 
     label: '어린이 (Child)', 
     color: 'bg-amber-500',
-    addButton: 'bg-amber-700 hover:bg-amber-800',
+    addButton: 'bg-amber-500 hover:bg-amber-600',
     fields: [{ id: 'child_m', label: '남' }, { id: 'child_f', label: '여' }]
   },
   { 
     id: 'infant', 
     label: '유아 (Infant)', 
     color: 'bg-rose-500',
-    addButton: 'bg-rose-700 hover:bg-rose-800',
+    addButton: 'bg-rose-500 hover:bg-rose-600',
     fields: [{ id: 'infant_m', label: '남' }, { id: 'infant_f', label: '여' }]
   },
 ];
@@ -458,7 +458,12 @@ export default function CounterPage() {
       {/* Controls */}
       <div className="space-y-3 bg-white/40 backdrop-blur-2xl p-3.5 sm:p-4 rounded-3xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] relative overflow-hidden">
         <div className="flex justify-between items-center gap-2">
-          <h2 className="text-sm font-extrabold text-brand-dark tracking-tight">관람 모드 및 시간</h2>
+          <div className="flex items-center gap-2 min-w-0">
+            <h2 className="text-sm font-extrabold text-brand-dark tracking-tight shrink-0">관람 모드 및 시간</h2>
+            <span className="shrink-0 rounded-full border border-white/70 bg-white/60 px-2 py-0.5 text-3xs font-bold text-brand-muted">
+              합계 <span className="tnum text-brand-dark" aria-live="polite">{visitorTotal}</span>명
+            </span>
+          </div>
           <button
             onClick={() => setIsAutoSync(!isAutoSync)}
             className={cn(
@@ -536,38 +541,6 @@ export default function CounterPage() {
               />
             </div>
           )}
-        </div>
-      </div>
-
-      {/* 지금 어느 회차에 입력 중인지 스크롤해도 계속 보이게 한다 */}
-      <div className="sticky top-0 z-20 -mx-3 sm:-mx-4 px-3 sm:px-4 py-1">
-        <div className="flex items-center justify-between gap-2 rounded-2xl border border-white/70 bg-white/70 px-3 py-2 shadow-[0_6px_24px_rgba(0,0,0,0.06)] backdrop-blur-2xl">
-          <div className="flex items-center gap-2 min-w-0">
-            <CalendarClock className="w-4 h-4 shrink-0 text-brand-blue" aria-hidden="true" />
-            <div className="min-w-0">
-              <p className="text-3xs font-bold tracking-wider text-brand-muted">입력 중인 회차</p>
-              <p className="truncate text-sm font-extrabold tracking-tight text-brand-dark">
-                {TYPE_LABELS[type]} · {session}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span
-              className={cn(
-                "rounded-full border px-2 py-0.5 text-3xs font-bold",
-                isAutoSync
-                  ? "border-brand-cyan/40 bg-brand-cyan/20 text-brand-dark"
-                  : "border-white/70 bg-white/60 text-brand-muted"
-              )}
-            >
-              {isAutoSync ? '실시간 연동' : '수동'}
-            </span>
-            <span className="text-2xs font-bold text-brand-muted">합계</span>
-            <span className="tnum text-lg font-black leading-none text-brand-black" aria-live="polite">
-              {visitorTotal}
-            </span>
-            <span className="text-2xs font-bold text-brand-muted">명</span>
-          </div>
         </div>
       </div>
 
