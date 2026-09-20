@@ -6,6 +6,17 @@ import { cn, validatePin } from '@/lib/utils';
 import { useAuth } from './AuthProvider';
 import { useStore, useFirestoreSync, ProgramType } from '@/store/useStore';
 import UserManual from './UserManual';
+
+/**
+ * 헤더 마크는 선택한 체험관에 맞춰 바뀐다. 체험관 선택 화면과 같은 아이콘을 써서
+ * 지금 어느 체험관을 집계 중인지 글자를 읽지 않고도 알 수 있게 한다.
+ * (브라우저 탭의 파비콘·홈화면 아이콘은 앱 공통 아이콘 그대로 둔다)
+ */
+const PROGRAM_ICONS: Record<ProgramType, typeof Bot> = {
+  '무인자동차': Car,
+  '스낵헌터': Coffee,
+  '메디봇': Bot,
+};
 import GlobalActionBanner from './GlobalActionBanner';
 import RobotCursor from './RobotCursor';
 
@@ -409,25 +420,24 @@ export default function Layout() {
     );
   }
 
+  const ProgramIcon = PROGRAM_ICONS[activeProgram] ?? Bot;
+
   return (
     <div className="flex flex-col h-[100dvh] bg-transparent text-brand-black font-sans overflow-hidden selection:bg-brand-blue/20 selection:text-brand-dark relative">
       {/* Header */}
       <header className="flex items-center justify-between gap-2 px-3 sm:px-5 pt-[calc(env(safe-area-inset-top)_+_0.75rem)] pb-3 bg-white/60 backdrop-blur-[20px] border-b border-white/80 z-10 sticky top-0 shadow-sm">
         <div className="flex items-center min-w-0">
           <NavLink to="/" onClick={handleLogoClick} className="flex items-center gap-2.5 min-w-0 rounded-2xl hover:opacity-85 transition-opacity group">
-            <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 shadow-sm ring-1 ring-white/70 group-hover:shadow-md transition-all bg-brand-dark flex items-center justify-center text-white">
-              {!logoError ? (
-                <img src="/app-icon.svg" alt="" aria-hidden="true" className="w-full h-full" onError={() => setLogoError(true)} />
-              ) : (
-                <Bot className="w-5 h-5" />
-              )}
+            <div className="w-9 h-9 rounded-xl shrink-0 shadow-sm ring-1 ring-white/70 group-hover:shadow-md transition-all bg-brand-dark flex items-center justify-center text-white">
+              <ProgramIcon className="w-5 h-5" aria-hidden="true" />
             </div>
             <div className="flex flex-col min-w-0">
-              <h1 className="font-extrabold text-sm sm:text-base tracking-tight leading-tight truncate">
+              {/* 자간을 좁히면 truncate 와 겹쳐 마지막 글자가 1px 잘린다 ('무인자동차'의 '차') */}
+              <h1 className="font-extrabold text-sm sm:text-base leading-tight truncate pr-0.5">
                 <span className="text-brand-dark">RAIM</span>{' '}
                 <span className="text-brand-blue">{activeProgram}</span>
               </h1>
-              <span className="text-2xs sm:text-xs font-bold text-brand-muted mt-0.5 truncate">방문자 카운터</span>
+              <span className="text-2xs sm:text-xs font-bold text-brand-muted mt-0.5 truncate pr-0.5">방문자 카운터</span>
             </div>
           </NavLink>
           <button
