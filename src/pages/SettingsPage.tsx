@@ -62,6 +62,46 @@ const UPDATE_HISTORY = [
   }
 ];
 
+/* ──────────────────────────────────────────────────────────────
+   화면 정돈용 클래스 토큰.
+   카드 안에 또 카드를 넣지 않고, 섹션 카드 하나 + 얇은 구분선으로 된
+   "한 동작 = 한 줄" 구조를 만든다.
+
+   CARD vs CARD_BLUR: 진한 단색 버튼이 들어가는 카드에는 backdrop-blur를
+   쓰지 않는다. 크로뮴이 그 색을 카드 전체에 번지게 칠하는 문제가 있어서다.
+   채도 높은 자식이 없는 카드만 blur를 유지한다.
+   ────────────────────────────────────────────────────────────── */
+const CARD = 'rounded-3xl border border-white/70 bg-white/55 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.04)] sm:p-5';
+const CARD_BLUR = 'rounded-3xl border border-white/60 bg-white/40 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.04)] backdrop-blur-2xl sm:p-5';
+
+const SECTION_TITLE = 'flex items-center gap-2 text-sm font-extrabold tracking-tight text-brand-dark';
+const SECTION_HELP = 'mt-1 text-2xs font-medium leading-relaxed text-brand-muted';
+
+/** 라벨 + 입력 + 버튼이 한 줄. 420px 미만에서만 라벨이 위로 접힌다. */
+const ROW = 'flex flex-wrap items-center gap-2 py-3 min-[420px]:flex-nowrap min-[420px]:gap-3';
+/** 라벨이 남는 가로 공간을 먹어, 입력·버튼은 오른쪽에 모인다. */
+const ROW_LABEL = 'w-full min-[420px]:min-w-0 min-[420px]:flex-1';
+const ROW_TITLE = 'flex items-center gap-1.5 text-xs font-bold text-brand-dark';
+const ROW_SUB = 'mt-0.5 block text-3xs font-medium leading-relaxed text-brand-muted';
+const DIVIDER = 'h-px bg-white/70';
+const STATUS_ROW = 'flex items-center justify-between gap-3 py-3';
+
+const FIELD_BASE = 'h-11 min-w-0 flex-1 rounded-xl border border-white/70 bg-white/70 px-3 text-sm font-bold text-brand-dark shadow-sm tnum';
+/** 좁은 화면에서는 버튼과 한 줄을 나눠 쓰고, 그 위로는 필요한 만큼만 차지한다. */
+const FIELD = `${FIELD_BASE} basis-40 min-[420px]:w-36 min-[420px]:flex-none sm:w-44`;
+
+/** 동작 버튼은 44px 높이를 지키되, 줄 자체는 뚱뚱해지지 않게 한다. */
+const BTN = 'inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-3.5 text-xs font-bold transition-all active:scale-95';
+const BTN_DARK = 'border border-brand-dark/50 bg-brand-dark text-white shadow-md hover:bg-brand-black';
+const BTN_GREEN = 'border border-emerald-800/50 bg-emerald-700 text-white shadow-md hover:bg-emerald-800';
+const BTN_SOFT = 'border border-white bg-white/80 text-brand-dark shadow-sm hover:bg-white';
+const BTN_WARN = 'border border-amber-200 bg-white/80 text-amber-700 shadow-sm hover:bg-white';
+const BTN_OFF = 'cursor-not-allowed border border-white/60 bg-white/50 text-brand-muted active:scale-100';
+const FILE_PICK = 'cursor-pointer has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-brand-blue has-[:focus-visible]:outline-offset-2';
+
+/** 상태 표시용 작은 칩 — 세로로 부풀리지 않는다(py-1.5 고정). */
+const CHIP = 'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-2xs font-bold shadow-sm';
+
 /** 되돌릴 수 없는 작업 전에, 영향을 받는 기간을 사람이 읽을 수 있게 덧붙인다. */
 const describeRange = (records: unknown[]): string => {
   const dates = records
@@ -219,112 +259,109 @@ export default function SettingsPage() {
       e.target.value = ''; // Reset input
     }
   };
-
   return (
-    <div className="p-3 sm:p-4 space-y-4 sm:space-y-6 max-w-4xl mx-auto w-full">
-      <h2 className="text-xl font-extrabold mb-6 text-brand-dark tracking-tight ml-1">설정 (Settings)</h2>
+    <div className="mx-auto w-full max-w-4xl p-3 sm:p-4">
+      <h2 className="mb-3 ml-1 text-xl font-extrabold tracking-tight text-brand-dark sm:mb-4">설정 (Settings)</h2>
 
-      <div className="space-y-4">
-        <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-6 relative overflow-hidden group">
-          <h3 className="text-sm font-extrabold text-brand-dark mb-2 flex items-center tracking-tight">
-            <FileSpreadsheet className="w-5 h-5 mr-2 text-emerald-700" />
+      {/* 넓은 화면에서는 서로 독립적인 섹션을 2열로 흘려 세로 스크롤을 줄인다. */}
+      <div className="grid grid-cols-1 items-start gap-3 sm:gap-4 lg:grid-cols-2">
+
+        {/* ── 데이터 내보내기 (엑셀) ───────────────────────────── */}
+        <section className={CARD}>
+          <h3 className={SECTION_TITLE}>
+            <FileSpreadsheet className="h-4 w-4 shrink-0 text-emerald-700" aria-hidden="true" />
             데이터 내보내기 (XLSX)
           </h3>
-          <p className="text-xs font-medium text-brand-muted mb-5 leading-relaxed">
-            원하시는 옵션(하루 전체 또는 월간 전체)을 선택하여 방문객 데이터를 엑셀로 다운로드합니다.
-          </p>
-          
-          <div className="flex flex-col sm:flex-row gap-3">
-            {/* Daily Export Box */}
-            <div className="flex-1 bg-white/40 border border-white/60 shadow-sm backdrop-blur-sm rounded-2xl p-4">
-              <div className="flex items-center space-x-2 mb-3 text-brand-dark">
-                <Calendar className="w-4 h-4" />
-                <span className="text-xs font-bold">일간 다운로드</span>
+          <p className={SECTION_HELP}>고른 날짜 또는 달의 방문객 데이터를 엑셀 파일로 내려받습니다.</p>
+
+          <div className="mt-1">
+            <div className={ROW}>
+              <div className={ROW_LABEL}>
+                <span className={ROW_TITLE}>
+                  <Calendar className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  일간
+                </span>
+                <span className={ROW_SUB}>하루 전체</span>
               </div>
               <input
                 type="date"
+                aria-label="내보낼 날짜"
                 value={exportDate}
                 onChange={(e) => setExportDate(e.target.value)}
-                className="w-full min-h-11 bg-white/60 border border-white/60 rounded-xl px-3 py-2 text-sm font-bold text-brand-dark tnum mb-3 shadow-sm"
+                className={FIELD}
               />
               <button
                 onClick={handleExportXLSX_Daily}
-                className="w-full min-h-11 bg-emerald-700 hover:bg-emerald-800 text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 flex items-center justify-center space-x-2 border border-emerald-800/50"
+                className={cn(BTN, BTN_GREEN)}
               >
-                <Download className="w-3.5 h-3.5" />
-                <span>데이터 다운로드</span>
+                <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>내려받기</span>
               </button>
             </div>
 
-            {/* Monthly Export Box */}
-            <div className="flex-1 bg-white/40 border border-white/60 shadow-sm backdrop-blur-sm rounded-2xl p-4">
-              <div className="flex items-center space-x-2 mb-3 text-brand-dark">
-                <CalendarRange className="w-4 h-4" />
-                <span className="text-xs font-bold">월간 전체(보고용)</span>
+            <div className={DIVIDER} />
+
+            <div className={ROW}>
+              <div className={ROW_LABEL}>
+                <span className={ROW_TITLE}>
+                  <CalendarRange className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  월간
+                </span>
+                <span className={ROW_SUB}>보고용 통합</span>
               </div>
               <input
                 type="month"
+                aria-label="내보낼 달"
                 value={exportMonth}
                 onChange={(e) => setExportMonth(e.target.value)}
-                className="w-full min-h-11 bg-white/60 border border-white/60 rounded-xl px-3 py-2 text-sm font-bold text-brand-dark tnum mb-3 shadow-sm"
+                className={FIELD}
               />
               <button
                 onClick={handleExportXLSX_Monthly}
-                className="w-full min-h-11 bg-brand-blue hover:bg-brand-dark text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 flex items-center justify-center space-x-2 border border-brand-dark/50"
+                className={cn(BTN, BTN_SOFT)}
               >
-                <Download className="w-3.5 h-3.5" />
-                <span>월간 통합 다운로드</span>
+                <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>내려받기</span>
               </button>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-6 relative overflow-hidden group">
-          <h3 className="text-sm font-extrabold text-brand-dark mb-2 flex items-center tracking-tight">
-            <Download className="w-5 h-5 mr-2 text-brand-blue" />
-            시스템 데이터 백업 / 복구 (JSON)
+        {/* ── 백업과 복구 (JSON) ───────────────────────────────── */}
+        <section className={CARD}>
+          <h3 className={SECTION_TITLE}>
+            <Download className="h-4 w-4 shrink-0 text-brand-blue" aria-hidden="true" />
+            백업과 복구 (JSON)
           </h3>
-          <p className="text-xs font-medium text-brand-muted mb-5 leading-relaxed">
-            전체 데이터를 백업하거나 이전 백업 파일로 시스템을 복구합니다.<br/>
-            <span className="text-brand-dark font-bold flex items-center mt-1">
-              정기적인 백업을 권장합니다.
-            </span>
-          </p>
-          
-          <div className="flex flex-col sm:flex-row gap-3">
-            {/* Backup Box */}
-            <div className="flex-1 bg-white/40 border border-white/60 shadow-sm backdrop-blur-sm rounded-2xl p-4">
-              <div className="flex items-center space-x-2 mb-3 text-brand-dark">
-                <Download className="w-4 h-4" />
-                <span className="text-xs font-bold">전체 데이터 백업</span>
+          <p className={SECTION_HELP}>전체 데이터를 파일 하나로 보관하고, 필요할 때 그 파일로 되돌립니다. 정기적인 백업을 권장합니다.</p>
+
+          <div className="mt-1">
+            <div className={ROW}>
+              <div className={ROW_LABEL}>
+                <span className={ROW_TITLE}>전체 데이터 백업</span>
+                <span className={ROW_SUB}>지금까지 쌓인 기록 전부</span>
               </div>
               <button
                 onClick={handleBackupJSON}
-                className="w-full min-h-11 bg-brand-dark hover:bg-brand-black text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 flex items-center justify-center space-x-2 mt-auto border border-brand-dark/50"
+                className={cn(BTN, BTN_DARK)}
               >
-                <Download className="w-3.5 h-3.5" />
-                <span>JSON 백업 파일 다운로드</span>
+                <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>백업 파일 저장</span>
               </button>
             </div>
 
-            {/* Restore Box */}
-            <div className="flex-1 bg-white/40 border border-white/60 shadow-sm backdrop-blur-sm rounded-2xl p-4">
-              <div className="flex items-center space-x-2 mb-3 text-brand-dark">
-                <Upload className="w-4 h-4" />
-                <span className="text-xs font-bold">데이터 복구</span>
+            <div className={DIVIDER} />
+
+            <div className={ROW}>
+              <div className={ROW_LABEL}>
+                <span className={ROW_TITLE}>데이터 복구</span>
+                <span className="mt-0.5 block text-3xs font-medium leading-relaxed text-amber-700">
+                  같은 날짜·관람유형·회차·프로그램의 기존 기록은 백업 파일의 내용으로 덮어써집니다.
+                </span>
               </div>
-              <p className="text-2xs font-bold text-amber-700 mb-3 leading-relaxed">
-                같은 날짜·관람유형·회차·프로그램의 기존 기록은 백업 파일의 내용으로 덮어써집니다. 파일을 고르면 무엇이 바뀌는지 먼저 확인할 수 있습니다.
-              </p>
-              <label className={cn(
-                "w-full min-h-11 flex items-center justify-center space-x-2 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer",
-                "has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-brand-blue has-[:focus-visible]:outline-offset-2",
-                isImporting
-                  ? "bg-white/50 text-brand-muted cursor-not-allowed border border-white/60"
-                  : "bg-white/80 hover:bg-white text-brand-dark active:scale-95 border border-white"
-              )}>
-                <Upload className="w-3.5 h-3.5" />
-                <span>{isImporting ? '복구 중...' : 'JSON 백업 파일 선택'}</span>
+              <label className={cn(BTN, FILE_PICK, isImporting ? BTN_OFF : BTN_WARN)}>
+                <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>{isImporting ? '복구 중...' : '백업 파일 선택'}</span>
                 <input
                   type="file"
                   accept=".json"
@@ -335,221 +372,217 @@ export default function SettingsPage() {
               </label>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-6 relative overflow-hidden group">
-          <h3 className="text-sm font-extrabold text-brand-dark mb-2 flex items-center tracking-tight">
-            <FileUp className="w-5 h-5 mr-2 text-amber-700" />
+        {/* ── 기존 데이터 가져오기 (XLSX/CSV) ──────────────────── */}
+        <section className={CARD}>
+          <h3 className={SECTION_TITLE}>
+            <FileUp className="h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
             기존 데이터 가져오기 (XLSX/CSV)
           </h3>
-          <p className="text-xs font-medium text-brand-muted mb-5 leading-relaxed">
-            기존 엑셀 파일(.xlsx, .csv)을 업로드하여 데이터를 일괄 등록합니다.<br/>
-            <span className="text-amber-700 font-bold flex items-start mt-1">
-              <AlertTriangle className="w-3 h-3 mr-1 mt-0.5 shrink-0" />
-              다목적실1(무인자동차), 다목적실2(스낵헌터), 다목적실3(메디봇) 데이터가 자동으로 분류되어 감지됩니다.
-            </span>
-          </p>
+          <p className={SECTION_HELP}>기존 엑셀 파일(.xlsx, .csv)을 올려 데이터를 일괄 등록합니다.</p>
 
-          <label className={cn(
-            "w-full min-h-11 flex items-center justify-center space-x-2 py-3.5 rounded-2xl text-sm font-bold transition-all shadow-md cursor-pointer",
-            "has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-brand-blue has-[:focus-visible]:outline-offset-2",
-            isImporting
-              ? "bg-white/50 text-brand-muted cursor-not-allowed border border-white/60"
-              : "bg-brand-dark hover:bg-brand-black text-white active:scale-[0.98] border border-brand-dark/50"
-          )}>
-            <Upload className="w-4 h-4" />
-            <span>{isImporting ? '데이터 처리 중...' : '엑셀 파일 선택 및 업로드'}</span>
-            <input
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              onChange={handleImportFile}
-              disabled={isImporting}
-              className="sr-only"
-            />
-          </label>
-        </div>
+          <div className={ROW}>
+            <div className={ROW_LABEL}>
+              <span className={ROW_TITLE}>파일로 일괄 등록</span>
+              <span className={ROW_SUB}>다목적실1(무인자동차), 다목적실2(스낵헌터), 다목적실3(메디봇) 데이터가 자동으로 분류되어 감지됩니다.</span>
+            </div>
+            <label className={cn(BTN, FILE_PICK, isImporting ? BTN_OFF : BTN_DARK)}>
+              <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>{isImporting ? '처리 중...' : '엑셀 파일 선택'}</span>
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                onChange={handleImportFile}
+                disabled={isImporting}
+                className="sr-only"
+              />
+            </label>
+          </div>
+        </section>
 
-        <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-6 relative overflow-hidden group">
-          <h3 className="text-sm font-extrabold text-brand-dark mb-2 flex items-center tracking-tight">
-            <KeyRound className="w-5 h-5 mr-2 text-brand-dark" />
-            보안 비밀번호 설정
+        {/* ── 보안 (PIN) ───────────────────────────────────────── */}
+        <section className={CARD}>
+          <h3 className={SECTION_TITLE}>
+            <KeyRound className="h-4 w-4 shrink-0 text-brand-dark" aria-hidden="true" />
+            보안 비밀번호
           </h3>
-          <p className="text-xs font-medium text-brand-muted mb-4 leading-relaxed">
-            관리자 화면 접속에 필요한 보안 비밀번호(6자리 또는 8자리 숫자)를 변경할 수 있습니다.<br/>
-          </p>
-          
-          <div className="bg-white/40 border border-white/60 shadow-sm backdrop-blur-sm rounded-2xl p-4">
-            {user?.email !== 'wlgns1232356@gmail.com' ? (
-              <div className="text-center py-4 text-xs font-bold text-rose-700">
-                ⚠️ 최고 관리자 계정(wlgns1232356@gmail.com)만 비밀번호를 변경할 수 있습니다.
+          <p className={SECTION_HELP}>관리자 화면 접속에 필요한 6자리 또는 8자리 숫자입니다.</p>
+
+          {user?.email !== 'wlgns1232356@gmail.com' ? (
+            <p className="mt-3 flex items-start gap-1.5 rounded-2xl border border-rose-100/60 bg-rose-50/70 px-3 py-2.5 text-2xs font-bold leading-relaxed text-rose-700">
+              <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span>최고 관리자 계정(wlgns1232356@gmail.com)만 비밀번호를 변경할 수 있습니다.</span>
+            </p>
+          ) : !isPinEditing ? (
+            <div className={ROW}>
+              <div className={ROW_LABEL}>
+                <span className={ROW_TITLE}>현재 비밀번호</span>
+                <span className="mt-0.5 block text-base font-black tracking-widest text-brand-dark" aria-hidden="true">******</span>
               </div>
-            ) : !isPinEditing ? (
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-brand-muted font-bold block mb-1">현재 비밀번호</span>
-                  <span className="text-lg font-black tracking-widest text-brand-dark" aria-hidden="true">******</span>
-                </div>
+              <button
+                onClick={() => setIsPinEditing(true)}
+                className={cn(BTN, BTN_SOFT)}
+              >
+                비밀번호 변경
+              </button>
+            </div>
+          ) : (
+            <div className="py-3">
+              <label htmlFor="settings-new-pin" className={ROW_TITLE}>새 비밀번호</label>
+              <span className={ROW_SUB}>6자리 또는 8자리 숫자만</span>
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  id="settings-new-pin"
+                  type="password"
+                  maxLength={8}
+                  value={newPin}
+                  onChange={(e) => setNewPin(e.target.value.replace(/[^0-9]/g, ''))}
+                  placeholder="숫자 6자리 또는 8자리"
+                  className={cn(FIELD_BASE, 'tracking-widest')}
+                  autoFocus
+                />
                 <button
-                  onClick={() => setIsPinEditing(true)}
-                  className="bg-white/80 border border-white hover:bg-white text-brand-dark px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95"
+                  onClick={() => {
+                    setIsPinEditing(false);
+                    setNewPin('');
+                  }}
+                  className="shrink-0 rounded-xl border border-white/60 bg-white/60 px-3 py-2 text-xs font-bold text-brand-muted transition-all hover:bg-white/80 hover:text-brand-dark active:scale-95"
                 >
-                  비밀번호 변경
+                  취소
+                </button>
+                <button
+                  onClick={handleUpdatePin}
+                  disabled={newPin.length !== 6 && newPin.length !== 8}
+                  className={cn(BTN, BTN_DARK, 'px-3 disabled:cursor-not-allowed disabled:bg-brand-dark disabled:opacity-50')}
+                >
+                  <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>저장</span>
                 </button>
               </div>
-            ) : (
-              <div className="flex items-center space-x-3">
-                <div className="flex-1">
-                  <span className="text-xs text-brand-muted font-bold block mb-1">새 비밀번호 (6자리 또는 8자리 숫자만)</span>
-                  <input
-                    type="password"
-                    maxLength={8}
-                    value={newPin}
-                    onChange={(e) => setNewPin(e.target.value.replace(/[^0-9]/g, ''))}
-                    placeholder="새로운 6자리 또는 8자리 숫자"
-                    className="w-full min-h-11 bg-white/80 border border-white rounded-xl px-3 py-2 text-sm tracking-widest font-bold text-brand-dark tnum shadow-sm"
-                    autoFocus
-                  />
-                </div>
-                <div className="flex space-x-2 mt-5">
-                  <button
-                    onClick={() => {
-                      setIsPinEditing(false);
-                      setNewPin('');
-                    }}
-                    className="bg-white/60 border border-white/60 hover:bg-white/80 text-brand-muted hover:text-brand-dark px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
-                  >
-                    취소
-                  </button>
-                  <button
-                    onClick={handleUpdatePin}
-                    disabled={newPin.length !== 6 && newPin.length !== 8}
-                    className="min-h-11 bg-brand-dark hover:bg-brand-black disabled:opacity-50 disabled:bg-brand-dark disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 flex items-center justify-center space-x-1"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    <span>저장</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+            </div>
+          )}
+        </section>
 
-        <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-6 relative overflow-hidden">
-          <h3 className="text-sm font-extrabold text-brand-dark mb-4 flex items-center tracking-tight">
-            <Cloud className="w-5 h-5 mr-2 text-brand-blue" />
+        {/* ── 동기화 상태 ──────────────────────────────────────── */}
+        <section className={CARD}>
+          <h3 className={SECTION_TITLE}>
+            <Cloud className="h-4 w-4 shrink-0 text-brand-blue" aria-hidden="true" />
             동기화 상태 (서버 연동)
           </h3>
-          
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-sm bg-white/40 backdrop-blur-sm p-3.5 rounded-2xl border border-white/60 shadow-sm">
-              <span className="text-brand-dark font-bold">네트워크 연결</span>
+          <p className={SECTION_HELP}>
+            오프라인에서도 기기에 안전하게 임시 저장되며, 네트워크가 복구되면 <strong className="font-bold text-brand-dark">서버로 자동 동기화</strong>됩니다.
+          </p>
+
+          <div className="mt-1">
+            <div className={STATUS_ROW}>
+              <span className="text-xs font-bold text-brand-dark">네트워크 연결</span>
               {navigator.onLine ? (
-                <div className="flex items-center space-x-2 bg-emerald-50/80 px-3 py-1.5 rounded-full border border-emerald-100/50 shadow-sm">
-                  <div className="w-2 h-2 bg-emerald-700 rounded-full animate-pulse" />
-                  <span className="text-emerald-800 font-bold text-xs">온라인</span>
-                </div>
+                <span className={cn(CHIP, 'border-emerald-100/50 bg-emerald-50/80 text-emerald-800')}>
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-700" aria-hidden="true" />
+                  온라인
+                </span>
               ) : (
-                <div className="flex items-center space-x-2 bg-rose-50/80 px-3 py-1.5 rounded-full border border-rose-100/50 shadow-sm">
-                  <CloudOff className="w-3 h-3 text-rose-700" />
-                  <span className="text-rose-800 font-bold text-xs">오프라인</span>
-                </div>
+                <span className={cn(CHIP, 'border-rose-100/50 bg-rose-50/80 text-rose-800')}>
+                  <CloudOff className="h-3 w-3 text-rose-700" aria-hidden="true" />
+                  오프라인
+                </span>
               )}
             </div>
 
-            <div className="flex items-center justify-between text-sm bg-white/40 backdrop-blur-sm p-3.5 rounded-2xl border border-white/60 shadow-sm">
-              <div className="flex flex-col">
-                <span className="text-brand-dark font-bold">오프라인 대기열</span>
-                <span className="text-3xs font-medium text-brand-muted mt-0.5">서버로 전송되지 못한 데이터</span>
+            <div className={DIVIDER} />
+
+            <div className={STATUS_ROW}>
+              <div className="min-w-0">
+                <span className="text-xs font-bold text-brand-dark">오프라인 대기열</span>
+                <span className={ROW_SUB}>서버로 전송되지 못한 데이터</span>
               </div>
               {pendingSyncCount > 0 ? (
-                <div className="flex items-center space-x-1.5 bg-amber-50/80 border border-amber-100/50 px-3 py-1.5 rounded-xl shadow-sm">
-                  <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
-                  <span className="text-amber-800 font-black text-sm tnum">{pendingSyncCount}건 대기중</span>
-                </div>
+                <span className={cn(CHIP, 'border-amber-100/50 bg-amber-50/80 text-amber-800')}>
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-700" aria-hidden="true" />
+                  <span className="tnum">{pendingSyncCount}건 대기중</span>
+                </span>
               ) : (
-                <div className="bg-white/50 text-brand-muted px-3 py-1.5 rounded-xl font-bold text-xs border border-white/60 shadow-sm">
-                  모두 전송됨
-                </div>
+                <span className={cn(CHIP, 'border-white/60 bg-white/60 text-brand-muted')}>모두 전송됨</span>
               )}
             </div>
           </div>
+        </section>
 
-          <p className="text-2xs font-medium text-brand-muted mt-4 leading-relaxed px-1">
-            인터넷이 끊긴 오프라인 상태에서도 기기에 안전하게 임시 저장되며, 네트워크가 다시 복구되면 <strong className="text-brand-dark">서버로 자동 동기화</strong>됩니다.
-          </p>
-        </div>
-
-        <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-6 relative overflow-hidden">
-          <h3 className="text-sm font-extrabold text-brand-dark mb-4 flex items-center tracking-tight">
-            <Info className="w-5 h-5 mr-2 text-brand-muted" />
+        {/* ── 앱 정보 (진한 단색 자식이 없어 blur 유지) ─────────── */}
+        <section className={CARD_BLUR}>
+          <h3 className={SECTION_TITLE}>
+            <Info className="h-4 w-4 shrink-0 text-brand-muted" aria-hidden="true" />
             앱 정보
           </h3>
-          <div className="space-y-3 text-sm bg-white/40 backdrop-blur-sm p-4 rounded-2xl border border-white/60 shadow-sm">
-            <div className="flex justify-between items-center">
-              <span className="text-brand-muted font-bold">버전</span>
-              <span className="text-brand-dark font-black bg-white/80 px-2 py-1 rounded-lg border border-white shadow-sm text-xs tnum text-selectable">{UPDATE_HISTORY[0].version}</span>
+
+          <div className="mt-1">
+            <div className="flex items-center justify-between gap-3 py-2.5">
+              <span className="text-xs font-bold text-brand-muted">버전</span>
+              <span className="text-xs font-black text-brand-dark tnum text-selectable">v{UPDATE_HISTORY[0].version}</span>
             </div>
-            <div className="h-px bg-white/50 w-full" />
-            <div className="flex justify-between items-center">
-              <span className="text-brand-muted font-bold">개발</span>
-              <a href="https://kimjihoon.me" target="_blank" rel="noopener noreferrer" className="text-brand-dark font-black hover:underline cursor-pointer">김지훈</a>
+            <div className={DIVIDER} />
+            <div className="flex items-center justify-between gap-3 py-2.5">
+              <span className="text-xs font-bold text-brand-muted">개발</span>
+              <a
+                href="https://kimjihoon.me"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-black text-brand-dark hover:underline"
+              >
+                김지훈
+              </a>
             </div>
           </div>
-          
-          <div className="mt-4 space-y-3">
-            <h4 className="font-bold text-brand-dark text-sm flex items-center mb-2">
-              <History className="w-4 h-4 mr-2" />
-              버전별 업데이트 내역
-            </h4>
-            
-            <div className="space-y-2">
-              {(showAllHistory ? UPDATE_HISTORY : UPDATE_HISTORY.slice(0, 3)).map((item) => (
-                <div key={item.version} className="bg-white/50 backdrop-blur-sm rounded-2xl border border-white/60 shadow-sm overflow-hidden">
-                  <button 
-                    onClick={() => toggleVersion(item.version)}
-                    aria-expanded={!!expandedVersions[item.version]}
-                    className="w-full min-h-11 flex items-center justify-between p-3.5 text-left hover:bg-white/60 transition-colors"
-                  >
-                    <span className="font-bold text-brand-dark text-sm tnum text-selectable">v{item.version}</span>
-                    {expandedVersions[item.version] ? (
-                      <ChevronUp className="w-4 h-4 text-brand-muted" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4 text-brand-muted" />
-                    )}
-                  </button>
-                  {expandedVersions[item.version] && (
-                    <div className="px-4 pb-4 pt-1">
-                      <ul className="list-disc pl-4 space-y-1.5 leading-relaxed text-xs text-brand-muted">
-                        {item.notes.map((note, index) => (
-                          <li key={index}>{note}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              ))}
-              
-              {!showAllHistory && UPDATE_HISTORY.length > 3 && (
-                <button 
-                  onClick={() => setShowAllHistory(true)}
-                  className="w-full py-1.5 text-xs font-bold text-brand-muted hover:text-brand-dark transition-colors flex items-center justify-center space-x-1"
+
+          <h4 className="mt-4 flex items-center gap-1.5 text-2xs font-extrabold tracking-tight text-brand-muted">
+            <History className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            버전별 업데이트 내역
+          </h4>
+
+          <div className="mt-0.5">
+            {(showAllHistory ? UPDATE_HISTORY : UPDATE_HISTORY.slice(0, 3)).map((item, i) => (
+              <div key={item.version} className={i > 0 ? 'border-t border-white/60' : undefined}>
+                <button
+                  onClick={() => toggleVersion(item.version)}
+                  aria-expanded={!!expandedVersions[item.version]}
+                  className="flex min-h-11 w-full items-center justify-between gap-2 text-left transition-colors hover:text-brand-blue"
                 >
-                  <span>과거 내역 더보기</span>
-                  <ChevronDown className="w-3 h-3" />
+                  <span className="text-xs font-bold text-brand-dark tnum text-selectable">v{item.version}</span>
+                  {expandedVersions[item.version] ? (
+                    <ChevronUp className="h-4 w-4 shrink-0 text-brand-muted" aria-hidden="true" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 shrink-0 text-brand-muted" aria-hidden="true" />
+                  )}
                 </button>
-              )}
-            </div>
+                {expandedVersions[item.version] && (
+                  <ul className="list-disc space-y-1.5 pb-3 pl-5 text-2xs leading-relaxed text-brand-muted">
+                    {item.notes.map((note, index) => (
+                      <li key={index}>{note}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+
+            {!showAllHistory && UPDATE_HISTORY.length > 3 && (
+              <button
+                onClick={() => setShowAllHistory(true)}
+                className="flex w-full items-center justify-center gap-1 border-t border-white/60 py-2 text-2xs font-bold text-brand-muted transition-colors hover:text-brand-dark"
+              >
+                <span>과거 내역 더보기</span>
+                <ChevronDown className="h-3 w-3" aria-hidden="true" />
+              </button>
+            )}
           </div>
-        </div>
-        
-        {/* Footer info */}
-        <div className="mt-12 flex flex-col items-center justify-center space-y-6 pb-6">
-          <div className="flex flex-col items-center space-y-4">
-            <img src="/raim_logo.png" alt="Seoul Robot & AI Museum" className="h-8 opacity-60 object-contain" />
-          </div>
-          <p className="text-xs font-bold text-brand-muted mt-2">© 2026 Seoul Robot & AI Museum</p>
-        </div>
+        </section>
       </div>
+
+      {/* 조용한 푸터 */}
+      <footer className="mt-6 flex flex-col items-center gap-1.5 pb-4">
+        <img src="/raim_logo.png" alt="Seoul Robot & AI Museum" className="h-6 object-contain opacity-50" />
+        <p className="text-3xs font-bold text-brand-muted">© 2026 Seoul Robot &amp; AI Museum · v{UPDATE_HISTORY[0].version}</p>
+      </footer>
     </div>
   );
 }
