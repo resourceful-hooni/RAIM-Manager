@@ -13,8 +13,15 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['pop.svg', 'raim_logo.png', 'logo_wa.png', 'footer_logo.png', 'app-icon.svg', 'favicon32.png', 'apple-touch-icon.png'],
+        // logo_wa.png(50KB)은 어디에서도 렌더되지 않는데 설치할 때마다
+        // 프리캐시되고 있었다. 제거.
+        includeAssets: ['pop.svg', 'raim_logo.png', 'footer_logo.png', 'app-icon.svg', 'favicon32.png', 'apple-touch-icon.png'],
         workbox: {
+          // 기본값(js/css/html)에 woff2만 더한다. 자체 호스팅 폰트가
+          // 오프라인에서도 떠야 하기 때문이다.
+          // png/svg까지 넣으면 includeAssets 항목과 중복 등록되고,
+          // 빼기로 한 logo_wa.png가 glob으로 다시 딸려 들어온다.
+          globPatterns: ['**/*.{js,css,html,woff2}'],
           globIgnores: ['**/*.xlsx', '**/sheets/**/*'],
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
           clientsClaim: true,

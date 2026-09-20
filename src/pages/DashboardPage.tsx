@@ -6,13 +6,19 @@ import { motion } from 'motion/react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { Users, Calendar, TrendingUp, AlertCircle, Download, CheckSquare, Square, BarChart2, FileText, Sparkles, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import { toPng } from 'html-to-image';
 import { saveAs } from 'file-saver';
-import { jsPDF } from 'jspdf';
 import { exportToXLSX } from '@/lib/exportUtils';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#f43f5e'];
 const PIE_COLORS = ['#3b82f6', '#f43f5e'];
+
+/* --color-brand-muted(#3D7099)와 같은 값. Recharts는 SVG 속성으로 색을 받기 때문에
+   PNG/PDF 내보내기에서도 안전하도록 CSS 변수 대신 리터럴로 둔다. */
+const AXIS_COLOR = '#3D7099';
+
+/* 활성 세그먼트 공통 표현. HistoryPage의 프로그램 필터와 동일하게 맞춘다. */
+const SEGMENT_ACTIVE = "bg-white/80 text-brand-blue border-white shadow-sm";
+const SEGMENT_INACTIVE = "bg-transparent text-brand-muted border-transparent hover:text-brand-dark hover:bg-white/50";
 
 export default function DashboardPage() {
   const activeProgram = useStore(state => state.activeProgram);
@@ -29,6 +35,9 @@ export default function DashboardPage() {
     const chartElement = document.getElementById(chartId);
     if (chartElement) {
       try {
+        // 첫 화면 로딩에 포함되지 않도록 클릭 시점에 불러온다
+        const { toPng } = await import('html-to-image');
+
         // Temporarily set fixed dimensions to prevent ResponsiveContainer from collapsing
         const originalWidth = chartElement.style.width;
         const originalHeight = chartElement.style.height;
@@ -58,6 +67,12 @@ export default function DashboardPage() {
     const dashboardElement = document.getElementById('dashboard-content');
     if (dashboardElement) {
       try {
+        // 첫 화면 로딩에 포함되지 않도록 클릭 시점에 불러온다
+        const [{ toPng }, { jsPDF }] = await Promise.all([
+          import('html-to-image'),
+          import('jspdf'),
+        ]);
+
         // Fix dimensions for all charts to prevent collapsing
         const pieChartContainer = document.getElementById('pie-chart-container');
         const mainChartContainer = document.getElementById('comprehensive-chart');
@@ -614,13 +629,13 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between mb-1 gap-2 flex-wrap sm:flex-nowrap">
                 <div className="flex items-center">
                   <h3 className="text-xs sm:text-sm font-extrabold text-brand-dark">AI 데이터 분석 인사이트</h3>
-                  <span className="ml-1.5 px-1.5 py-0.5 rounded bg-brand-dark text-white text-[8px] sm:text-[9px] uppercase tracking-wider font-black shadow-sm">Beta</span>
+                  <span className="ml-1.5 px-1.5 py-0.5 rounded bg-brand-dark text-white text-3xs uppercase tracking-wider font-black shadow-sm">Beta</span>
                 </div>
                 <button
                   id="rotate-ai-insight-btn"
                   onClick={() => setRefreshSeed(prev => prev + 1)}
                   disabled={isAiLoading}
-                  className="flex items-center space-x-1 px-2 py-0.5 text-[10px] font-bold text-brand-blue bg-brand-blue/10 hover:bg-brand-blue/20 transition-all border border-brand-blue/20 active:scale-95 disabled:opacity-50 cursor-pointer rounded-md shrink-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+                  className="flex items-center justify-center space-x-1 px-3 min-h-11 text-2xs font-bold text-brand-blue bg-brand-blue/10 hover:bg-brand-blue/20 transition-all border border-brand-blue/20 active:scale-95 disabled:opacity-50 cursor-pointer rounded-xl shrink-0"
                   title="다른 주제 분석 보기"
                 >
                   <RefreshCw className={cn("w-2.5 h-2.5", isAiLoading && "animate-spin")} />
@@ -629,7 +644,7 @@ export default function DashboardPage() {
               </div>
               
               {isAiLoading ? (
-                <div className="flex items-center space-x-2 text-brand-muted/80 text-xs py-1">
+                <div className="flex items-center space-x-2 text-brand-muted text-xs py-1">
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   <span>새로운 인사이트를 분석하고 있습니다...</span>
                 </div>
@@ -640,7 +655,7 @@ export default function DashboardPage() {
                   )}
                 </p>
               )}
-              <div className="mt-2 flex items-center justify-end w-full text-[9px] font-bold text-brand-muted/70 gap-0.5 pr-1">
+              <div className="mt-2 flex items-center justify-end w-full text-3xs font-bold text-brand-muted gap-0.5 pr-1">
                 <Sparkles className="w-2.5 h-2.5" />
                 <span>Powered by Gemini</span>
               </div>
@@ -655,10 +670,10 @@ export default function DashboardPage() {
             <button
               key={prog}
               className={cn(
-                "px-4 py-2 text-sm font-bold rounded-xl transition-all active:scale-95 border backdrop-blur-sm shadow-sm focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 relative z-10",
-                programFilter === prog 
-                  ? "bg-brand-dark text-white border-brand-dark shadow-md" 
-                  : "bg-white/60 text-brand-muted border-white/80 hover:text-brand-dark hover:bg-white/80"
+                "px-4 min-h-11 text-sm font-bold rounded-xl transition-all active:scale-95 border backdrop-blur-sm relative z-10",
+                programFilter === prog
+                  ? SEGMENT_ACTIVE
+                  : "bg-white/40 text-brand-muted border-white/50 hover:text-brand-dark hover:bg-white/60"
               )}
               onClick={() => setProgramFilter(prog as any)}
             >
@@ -672,10 +687,10 @@ export default function DashboardPage() {
             <button
               key={mode}
               className={cn(
-                "flex-1 py-2 text-sm font-bold rounded-lg transition-all active:scale-95 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 relative z-10",
-                viewMode === mode 
-                  ? "bg-white text-brand-blue shadow-[0_2px_8px_-1px_rgba(0,0,0,0.1),inset_0_1px_1px_rgba(255,255,255,1)] border border-white/60" 
-                  : "text-brand-muted hover:text-brand-dark hover:bg-white/20"
+                "flex-1 min-h-11 text-sm font-bold rounded-lg transition-all active:scale-95 border relative z-10",
+                viewMode === mode
+                  ? SEGMENT_ACTIVE
+                  : SEGMENT_INACTIVE
               )}
               onClick={() => setViewMode(mode)}
             >
@@ -696,11 +711,11 @@ export default function DashboardPage() {
             }}
             min={viewMode === 'yearly' ? "2024" : undefined}
             max={viewMode === 'yearly' ? "2030" : undefined}
-            className="bg-transparent border-none px-1 py-2 text-brand-dark focus:outline-none flex-1 text-sm font-bold min-w-[80px]"
+            className="bg-transparent border-none px-1 min-h-11 text-brand-dark flex-1 text-sm font-bold min-w-[80px] tnum"
           />
           <button
             onClick={handleDownloadPDF}
-            className="flex items-center space-x-1 px-3 py-2 bg-brand-light text-white hover:bg-brand-cyan rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm flex-shrink-0 whitespace-nowrap focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+            className="flex items-center justify-center space-x-1 px-3 min-h-11 bg-brand-dark text-white hover:bg-brand-blue rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm flex-shrink-0 whitespace-nowrap"
             title="PDF 보고서 다운로드"
           >
             <FileText className="w-4 h-4" />
@@ -709,16 +724,18 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      {/* lg에서 카드가 오히려 좁아지던 문제: 상세 분포 표를 xl 전까지 아래에 전폭으로 두고,
+          xl부터 8/4로 나눠 뷰포트가 넓어질수록 카드도 같이 넓어지게 한다. */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
         {/* Left Column: Summary & Pie */}
-        <div className="flex flex-col md:flex-row gap-4 lg:col-span-7 xl:col-span-7">
-          <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_24px_-4px_rgba(0,0,0,0.08),0_4px_12px_-2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] rounded-[2rem] p-4 sm:p-5 flex flex-col justify-between h-[190px] sm:h-[200px] w-full flex-1 overflow-hidden">
+        <div className="flex flex-col md:flex-row gap-4 xl:col-span-8">
+          <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_24px_-4px_rgba(0,0,0,0.08),0_4px_12px_-2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] rounded-[2rem] p-4 sm:p-5 flex flex-col justify-between min-h-[190px] sm:min-h-[200px] w-full md:flex-[3] overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center space-x-1.5 text-brand-muted shrink-0">
                 <Users className="w-4 h-4 text-brand-blue shrink-0" />
                 <span className="text-xs sm:text-sm font-bold text-brand-dark whitespace-nowrap">총 방문객</span>
               </div>
-              <div className="flex p-0.5 bg-white/50 backdrop-blur-sm rounded-lg border border-white/60 gap-0.5 shadow-sm shrink-0 self-start">
+              <div className="flex p-0.5 bg-white/40 backdrop-blur-sm rounded-xl border border-white/50 gap-0.5 shadow-sm shrink-0 self-start">
                 {[
                   { value: 'all', label: '전체' },
                   { value: 'autonomous', label: '자율' },
@@ -732,10 +749,10 @@ export default function DashboardPage() {
                       setSummaryFilterType(opt.value as 'all' | 'autonomous' | 'reserved');
                     }}
                     className={cn(
-                      "px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-md text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap active:scale-95 cursor-pointer relative z-30 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 border",
-                      summaryFilterType === opt.value 
-                        ? "bg-white text-brand-blue shadow-[0_1.5px_4px_-1px_rgba(0,0,0,0.1)] border-transparent" 
-                        : "text-brand-muted hover:text-brand-dark hover:bg-white/60 border-transparent"
+                      "px-2.5 sm:px-3 min-h-11 rounded-lg text-2xs sm:text-xs font-bold transition-all whitespace-nowrap active:scale-95 cursor-pointer relative z-30 border",
+                      summaryFilterType === opt.value
+                        ? SEGMENT_ACTIVE
+                        : SEGMENT_INACTIVE
                     )}
                   >
                     {opt.label}
@@ -751,7 +768,7 @@ export default function DashboardPage() {
                   initial={{ opacity: 0.5, y: -2 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="text-4xl sm:text-5xl font-black text-brand-black tracking-tighter leading-none"
+                  className="text-4xl sm:text-5xl font-black text-brand-black tracking-tighter leading-none tnum text-selectable"
                 >
                   {stats.total}
                 </motion.span>
@@ -759,28 +776,28 @@ export default function DashboardPage() {
               </div>
               <div className="flex flex-wrap items-center gap-2 mt-1">
                 <span className={cn(
-                  "inline-block text-[10px] sm:text-xs font-bold px-2 py-1 rounded-lg border shadow-sm shrink-0",
+                  "inline-block text-2xs sm:text-xs font-bold px-2 py-1 rounded-lg border shadow-sm shrink-0 tnum",
                   stats.total >= prevStats.total ? "bg-brand-cyan/20 text-brand-dark border-brand-cyan/30" : "bg-rose-100/80 text-rose-700 border-rose-200/50"
                 )}>
                   {viewMode === 'daily' ? '어제 대비' : viewMode === 'weekly' ? '지난주 대비' : viewMode === 'monthly' ? '지난달 대비' : '작년 대비'} {getPercentageChange(stats.total, prevStats.total)}
                 </span>
                 
-                <div className="flex space-x-1.5 text-[10px] sm:text-xs font-bold shrink-0">
+                <div className="flex space-x-1.5 text-2xs sm:text-xs font-bold shrink-0">
                   <div className="flex items-center space-x-1 bg-brand-blue/10 px-2 py-1 rounded-lg border border-brand-blue/20">
                     <span className="text-brand-blue font-bold">남</span>
-                    <span className="text-brand-dark font-black">{pieData[0].value}</span>
+                    <span className="text-brand-dark font-black tnum text-selectable">{pieData[0].value}</span>
                   </div>
                   <div className="flex items-center space-x-1 bg-rose-100/50 px-2 py-1 rounded-lg border border-rose-200/50">
-                    <span className="text-rose-500 font-bold">여</span>
-                    <span className="text-brand-dark font-black">{pieData[1].value}</span>
+                    <span className="text-rose-700 font-bold">여</span>
+                    <span className="text-brand-dark font-black tnum text-selectable">{pieData[1].value}</span>
                   </div>
                 </div>
               </div>
             </div>
           </div>
           
-          <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_24px_-4px_rgba(0,0,0,0.08),0_4px_12px_-2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] rounded-[2rem] p-4 sm:p-5 flex flex-col items-center justify-between h-[190px] sm:h-[200px] w-full flex-1 overflow-hidden">
-            <div id="pie-chart-container" className="h-[110px] w-full flex items-center justify-center min-w-[80px] sm:min-w-[120px] -mt-2">
+          <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_24px_-4px_rgba(0,0,0,0.08),0_4px_12px_-2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] rounded-[2rem] p-4 sm:p-5 flex flex-col items-center justify-between min-h-[190px] sm:min-h-[200px] w-full md:flex-[2] overflow-hidden">
+            <div id="pie-chart-container" className="h-[110px] w-full flex items-center justify-center min-w-[80px] sm:min-w-[120px] -mt-2 tnum">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                   <Pie
@@ -807,25 +824,25 @@ export default function DashboardPage() {
             <div className="flex space-x-4 text-xs font-bold">
               <div className="flex items-center space-x-1.5 bg-white/50 px-2.5 py-1 rounded-lg border border-white/60 shadow-sm shrink-0">
                 <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm" />
-                <span className="text-brand-dark">남 {pieData[0].value}명</span>
+                <span className="text-brand-dark tnum text-selectable">남 {pieData[0].value}명</span>
               </div>
               <div className="flex items-center space-x-1.5 bg-white/50 px-2.5 py-1 rounded-lg border border-white/60 shadow-sm shrink-0">
                 <div className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-sm" />
-                <span className="text-brand-dark">여 {pieData[1].value}명</span>
+                <span className="text-brand-dark tnum text-selectable">여 {pieData[1].value}명</span>
               </div>
             </div>
           </div>
         </div>
  
         {/* Right Column: Detailed Breakdown Table */}
-        <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_24px_-4px_rgba(0,0,0,0.08),0_4px_12px_-2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] rounded-[2rem] p-6 h-full lg:col-span-5 xl:col-span-5">
+        <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_24px_-4px_rgba(0,0,0,0.08),0_4px_12px_-2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] rounded-[2rem] p-6 h-full xl:col-span-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
             <h3 className="text-sm font-extrabold text-brand-dark tracking-tight flex items-center">
               <BarChart2 className="w-4 h-4 mr-2 text-brand-blue" />
               상세 방문객 분포 (연령/성별)
             </h3>
             <div className="flex items-center gap-2">
-              <div className="flex p-1 bg-white/50 backdrop-blur-sm rounded-xl border border-white/60 gap-1 shadow-sm">
+              <div className="flex p-1 bg-white/40 backdrop-blur-sm rounded-xl border border-white/50 gap-1 shadow-sm">
                 {[
                   { value: 'all', label: '전체' },
                   { value: 'autonomous', label: '자율' },
@@ -835,10 +852,10 @@ export default function DashboardPage() {
                     key={opt.value}
                     onClick={() => setBreakdownFilterType(opt.value as any)}
                     className={cn(
-                      "px-3 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 border relative z-10",
-                      breakdownFilterType === opt.value 
-                        ? "bg-white text-brand-blue shadow-[0_2px_8px_-1px_rgba(0,0,0,0.1),inset_0_1px_1px_rgba(255,255,255,1)] border-transparent" 
-                        : "text-brand-muted hover:text-brand-dark hover:bg-white/40 border-transparent"
+                      "px-3 min-h-11 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 border relative z-10",
+                      breakdownFilterType === opt.value
+                        ? SEGMENT_ACTIVE
+                        : SEGMENT_INACTIVE
                     )}
                   >
                     {opt.label}
@@ -847,7 +864,7 @@ export default function DashboardPage() {
               </div>
               <button
                 onClick={() => exportToXLSX(date, allRecords, viewMode === 'monthly' ? 'monthly' : 'daily')}
-                className="flex items-center justify-center p-1.5 bg-white/60 hover:bg-white/90 text-brand-blue rounded-xl transition-all shadow-sm border border-white/80 active:scale-95 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+                className="flex items-center justify-center min-h-11 min-w-11 bg-white/60 hover:bg-white/90 text-brand-blue rounded-xl transition-all shadow-sm border border-white/80 active:scale-95"
                 title="엑셀 내보내기"
               >
                 <Download className="w-4 h-4" />
@@ -858,7 +875,7 @@ export default function DashboardPage() {
             {Object.entries(breakdownStats).map(([key, value]) => (
               <div key={key} className="flex justify-between items-center p-3 bg-white/40 rounded-xl border border-white/50 shadow-sm backdrop-blur-sm hover:bg-white/60 transition-colors">
                 <span className="text-xs font-bold text-brand-muted">{key}</span>
-                <span className="text-sm font-black text-brand-black">{value as number}명</span>
+                <span className="text-sm font-black text-brand-black tnum text-selectable">{value as number}명</span>
               </div>
             ))}
           </div>
@@ -872,7 +889,7 @@ export default function DashboardPage() {
           </h3>
           <button 
             onClick={() => handleDownloadChart('comprehensive-chart', `${date.replace(/-/g, '')}_방문객추이`)}
-            className="text-brand-muted hover:text-brand-blue bg-white/50 hover:bg-white/80 p-2 rounded-xl transition-all border border-white/60 shadow-sm active:scale-95 flex-shrink-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+            className="flex items-center justify-center text-brand-muted hover:text-brand-blue bg-white/50 hover:bg-white/80 min-h-11 min-w-11 rounded-xl transition-all border border-white/60 shadow-sm active:scale-95 flex-shrink-0"
             title="그래프 다운로드 (PNG)"
           >
             <Download className="w-4 h-4" />
@@ -894,10 +911,10 @@ export default function DashboardPage() {
                     key={opt.value}
                     onClick={() => setChartFilterType(opt.value as any)}
                     className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 border",
-                      chartFilterType === opt.value 
-                        ? "bg-white/90 text-brand-blue shadow-[0_2px_8px_-1px_rgba(0,0,0,0.1),inset_0_1px_1px_rgba(255,255,255,1)] border-transparent" 
-                        : "text-brand-muted hover:text-brand-dark hover:bg-white/60 border-transparent"
+                      "px-3 min-h-11 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 border",
+                      chartFilterType === opt.value
+                        ? SEGMENT_ACTIVE
+                        : SEGMENT_INACTIVE
                     )}
                   >
                     {opt.label}
@@ -921,10 +938,10 @@ export default function DashboardPage() {
                     key={opt.value}
                     onClick={() => setChartDisplayMode(opt.value as any)}
                     className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0",
-                      chartDisplayMode === opt.value 
-                        ? "bg-brand-dark text-white shadow-[0_4px_16px_rgba(0,0,0,0.15)] border border-brand-dark" 
-                        : "text-brand-muted hover:text-brand-dark hover:bg-white/60"
+                      "px-3 min-h-11 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 border",
+                      chartDisplayMode === opt.value
+                        ? SEGMENT_ACTIVE
+                        : SEGMENT_INACTIVE
                     )}
                   >
                     {opt.label}
@@ -935,14 +952,14 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div id="comprehensive-chart" className="h-[260px] w-full">
+        <div id="comprehensive-chart" className="h-[260px] w-full tnum">
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               {viewMode === 'daily' ? (
                 <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: chartDisplayMode === 'detailed' ? 30 : 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.4)" vertical={false} />
-                  <XAxis dataKey="name" stroke="#508EBC" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
-                  <YAxis stroke="#508EBC" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
+                  <XAxis dataKey="name" stroke={AXIS_COLOR} fontSize={11} tickLine={false} axisLine={false} fontWeight="bold" />
+                  <YAxis stroke={AXIS_COLOR} fontSize={11} tickLine={false} axisLine={false} fontWeight="bold" />
                   <Tooltip 
                     cursor={{ fill: 'rgba(255,255,255,0.3)' }}
                     contentStyle={{ backgroundColor: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)', borderColor: 'rgba(255,255,255,0.5)', borderRadius: '12px', color: '#000000', boxShadow: '0 8px 32px 0 rgba(0, 68, 139, 0.1)' }}
@@ -954,7 +971,7 @@ export default function DashboardPage() {
                     content={(props) => {
                       const { payload } = props;
                       return (
-                        <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-1.5 mt-4 text-[10px] sm:text-xs font-bold text-brand-dark px-4">
+                        <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-1.5 mt-4 text-3xs sm:text-2xs font-bold text-brand-dark px-4">
                           {payload?.map((entry: any, index: number) => (
                             <div key={`legend-bar-${index}`} className="flex items-center space-x-1">
                               <span className="w-2 h-2 rounded-full inline-block shrink-0" style={{ backgroundColor: entry.color }} />
@@ -998,8 +1015,8 @@ export default function DashboardPage() {
               ) : (
                 <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: chartDisplayMode === 'detailed' ? 30 : 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.4)" vertical={false} />
-                  <XAxis dataKey="name" stroke="#508EBC" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
-                  <YAxis stroke="#508EBC" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
+                  <XAxis dataKey="name" stroke={AXIS_COLOR} fontSize={11} tickLine={false} axisLine={false} fontWeight="bold" />
+                  <YAxis stroke={AXIS_COLOR} fontSize={11} tickLine={false} axisLine={false} fontWeight="bold" />
                   <Tooltip 
                     contentStyle={{ backgroundColor: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)', borderColor: 'rgba(255,255,255,0.5)', borderRadius: '12px', color: '#000000', boxShadow: '0 8px 32px 0 rgba(0, 68, 139, 0.1)' }}
                     itemStyle={{ color: '#00448B', fontWeight: 'bold' }}
@@ -1010,7 +1027,7 @@ export default function DashboardPage() {
                     content={(props) => {
                       const { payload } = props;
                       return (
-                        <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-1.5 mt-4 text-[10px] sm:text-xs font-bold text-brand-dark px-4">
+                        <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-1.5 mt-4 text-3xs sm:text-2xs font-bold text-brand-dark px-4">
                           {payload?.map((entry: any, index: number) => (
                             <div key={`legend-line-${index}`} className="flex items-center space-x-1">
                               <span className="w-2 h-2 rounded-full inline-block shrink-0" style={{ backgroundColor: entry.color }} />

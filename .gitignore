@@ -13,3 +13,7 @@ firebase-applet-config.json
 # (출석부 양식 등 코드에 필요한 파일은 public/sheets/ 아래에 두면 정상적으로 추적된다)
 /*.xlsx
 /*.csv
+
+# 설치형 에이전트 스킬(third-party). skills-lock.json 으로 재설치되므로 결과물은 추적하지 않는다
+.agents/
+.claude/skills/
