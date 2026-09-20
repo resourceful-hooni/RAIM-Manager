@@ -62,6 +62,18 @@ const UPDATE_HISTORY = [
   }
 ];
 
+/** 되돌릴 수 없는 작업 전에, 영향을 받는 기간을 사람이 읽을 수 있게 덧붙인다. */
+const describeRange = (records: unknown[]): string => {
+  const dates = records
+    .map(r => (r as { date?: unknown } | null)?.date)
+    .filter((d): d is string => typeof d === 'string' && d.length > 0)
+    .sort();
+  if (dates.length === 0) return '';
+  const first = dates[0];
+  const last = dates[dates.length - 1];
+  return first === last ? ` (${first})` : ` (${first} ~ ${last})`;
+};
+
 export default function SettingsPage() {
   const { user } = useAuth();
   const getAllRecords = useStore(state => state.getAllRecords);
@@ -119,13 +131,27 @@ export default function SettingsPage() {
       const text = await file.text();
       const records = JSON.parse(text);
       if (!Array.isArray(records)) throw new Error("Invalid format");
-      
-      if (window.confirm(`[주의] 복구 시 기존 데이터가 덮어씌워질 수 있습니다.\n\n총 ${records.length}개의 데이터를 복구하시겠습니까?`)) {
+
+      const currentCount = getAllRecords().length;
+      const confirmMessage = [
+        '[복구 확인] 아래 내용대로 데이터를 복구합니다.',
+        '',
+        `· 불러올 기록: ${records.length}건${describeRange(records)}`,
+        `· 현재 기기에 보관 중인 기록: ${currentCount}건`,
+        '· 같은 기록(날짜·관람유형·회차·프로그램)은 백업 파일의 내용으로 덮어써집니다.',
+        '· 백업 파일에 없는 기존 기록은 그대로 남습니다.',
+        '· 덮어쓴 내용은 되돌릴 수 없으니, 먼저 현재 데이터를 백업해 주세요.',
+        '',
+        '복구를 진행하시겠습니까?',
+      ].join('\n');
+
+      if (window.confirm(confirmMessage)) {
         await setAllRecords(records); // We need to add setAllRecords to useStore
         toast.success('데이터 복구가 완료되었습니다.');
       }
-    } catch (error) {
-      console.error('Restore Error:', error);
+    } catch {
+      // 파일 내용이 그대로 콘솔에 남지 않도록, 원본 오류 객체는 기록하지 않는다
+      console.error('Restore failed');
       toast.error('백업 데이터를 불러오는 중 오류가 발생했습니다. 올바른 JSON 파일인지 확인해주세요.');
     } finally {
       setIsImporting(false);
@@ -170,12 +196,23 @@ export default function SettingsPage() {
         return;
       }
 
-      if (window.confirm(`${records.length}개의 데이터를 가져오시겠습니까? 기존 데이터와 중복될 경우 덮어씌워집니다.`)) {
+      const confirmMessage = [
+        '[가져오기 확인] 아래 내용대로 데이터를 등록합니다.',
+        '',
+        `· 불러올 기록: ${records.length}건${describeRange(records)}`,
+        '· 같은 기록(날짜·관람유형·회차·프로그램)은 파일의 내용으로 덮어써집니다.',
+        '· 파일에 없는 기존 기록은 그대로 남습니다.',
+        '',
+        '데이터를 가져오시겠습니까?',
+      ].join('\n');
+
+      if (window.confirm(confirmMessage)) {
         await importRecords(records);
         toast.success('데이터를 성공적으로 가져왔습니다.');
       }
-    } catch (error) {
-      console.error('Import Error:', error);
+    } catch {
+      // 파일 내용이 그대로 콘솔에 남지 않도록, 원본 오류 객체는 기록하지 않는다
+      console.error('Import failed');
       toast.error('데이터를 가져오는 중 오류가 발생했습니다.');
     } finally {
       setIsImporting(false);
@@ -190,7 +227,7 @@ export default function SettingsPage() {
       <div className="space-y-4">
         <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-6 relative overflow-hidden group">
           <h3 className="text-sm font-extrabold text-brand-dark mb-2 flex items-center tracking-tight">
-            <FileSpreadsheet className="w-5 h-5 mr-2 text-emerald-600" />
+            <FileSpreadsheet className="w-5 h-5 mr-2 text-emerald-700" />
             데이터 내보내기 (XLSX)
           </h3>
           <p className="text-xs font-medium text-brand-muted mb-5 leading-relaxed">
@@ -208,11 +245,11 @@ export default function SettingsPage() {
                 type="date"
                 value={exportDate}
                 onChange={(e) => setExportDate(e.target.value)}
-                className="w-full bg-white/60 border border-white/60 rounded-xl px-3 py-2 text-sm font-bold text-brand-dark focus:outline-none   mb-3 shadow-sm"
+                className="w-full min-h-11 bg-white/60 border border-white/60 rounded-xl px-3 py-2 text-sm font-bold text-brand-dark tnum mb-3 shadow-sm"
               />
               <button
                 onClick={handleExportXLSX_Daily}
-                className="w-full bg-emerald-600/90 hover:bg-emerald-600 text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 flex items-center justify-center space-x-2 border border-emerald-500/50"
+                className="w-full min-h-11 bg-emerald-700 hover:bg-emerald-800 text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 flex items-center justify-center space-x-2 border border-emerald-800/50"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>데이터 다운로드</span>
@@ -229,11 +266,11 @@ export default function SettingsPage() {
                 type="month"
                 value={exportMonth}
                 onChange={(e) => setExportMonth(e.target.value)}
-                className="w-full bg-white/60 border border-white/60 rounded-xl px-3 py-2 text-sm font-bold text-brand-dark focus:outline-none   mb-3 shadow-sm"
+                className="w-full min-h-11 bg-white/60 border border-white/60 rounded-xl px-3 py-2 text-sm font-bold text-brand-dark tnum mb-3 shadow-sm"
               />
               <button
                 onClick={handleExportXLSX_Monthly}
-                className="w-full bg-teal-600/90 hover:bg-teal-600 text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 flex items-center justify-center space-x-2 border border-teal-500/50"
+                className="w-full min-h-11 bg-brand-blue hover:bg-brand-dark text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 flex items-center justify-center space-x-2 border border-brand-dark/50"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>월간 통합 다운로드</span>
@@ -244,12 +281,12 @@ export default function SettingsPage() {
 
         <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-6 relative overflow-hidden group">
           <h3 className="text-sm font-extrabold text-brand-dark mb-2 flex items-center tracking-tight">
-            <Download className="w-5 h-5 mr-2 text-indigo-600" />
+            <Download className="w-5 h-5 mr-2 text-brand-blue" />
             시스템 데이터 백업 / 복구 (JSON)
           </h3>
           <p className="text-xs font-medium text-brand-muted mb-5 leading-relaxed">
             전체 데이터를 백업하거나 이전 백업 파일로 시스템을 복구합니다.<br/>
-            <span className="text-indigo-700 font-bold flex items-center mt-1">
+            <span className="text-brand-dark font-bold flex items-center mt-1">
               정기적인 백업을 권장합니다.
             </span>
           </p>
@@ -263,7 +300,7 @@ export default function SettingsPage() {
               </div>
               <button
                 onClick={handleBackupJSON}
-                className="w-full bg-indigo-600/90 hover:bg-indigo-600 text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 flex items-center justify-center space-x-2 mt-auto border border-indigo-500/50"
+                className="w-full min-h-11 bg-brand-dark hover:bg-brand-black text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 flex items-center justify-center space-x-2 mt-auto border border-brand-dark/50"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>JSON 백업 파일 다운로드</span>
@@ -276,11 +313,15 @@ export default function SettingsPage() {
                 <Upload className="w-4 h-4" />
                 <span className="text-xs font-bold">데이터 복구</span>
               </div>
+              <p className="text-2xs font-bold text-amber-700 mb-3 leading-relaxed">
+                같은 날짜·관람유형·회차·프로그램의 기존 기록은 백업 파일의 내용으로 덮어써집니다. 파일을 고르면 무엇이 바뀌는지 먼저 확인할 수 있습니다.
+              </p>
               <label className={cn(
-                "w-full flex items-center justify-center space-x-2 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer",
-                isImporting 
-                  ? "bg-white/50 text-brand-muted cursor-not-allowed border border-white/60" 
-                  : "bg-brand-dark hover:bg-brand-black text-white active:scale-95 border border-brand-dark/50"
+                "w-full min-h-11 flex items-center justify-center space-x-2 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer",
+                "has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-brand-blue has-[:focus-visible]:outline-offset-2",
+                isImporting
+                  ? "bg-white/50 text-brand-muted cursor-not-allowed border border-white/60"
+                  : "bg-white/80 hover:bg-white text-brand-dark active:scale-95 border border-white"
               )}>
                 <Upload className="w-3.5 h-3.5" />
                 <span>{isImporting ? '복구 중...' : 'JSON 백업 파일 선택'}</span>
@@ -289,7 +330,7 @@ export default function SettingsPage() {
                   accept=".json"
                   onChange={handleRestoreJSON}
                   disabled={isImporting}
-                  className="hidden"
+                  className="sr-only"
                 />
               </label>
             </div>
@@ -298,22 +339,23 @@ export default function SettingsPage() {
 
         <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-6 relative overflow-hidden group">
           <h3 className="text-sm font-extrabold text-brand-dark mb-2 flex items-center tracking-tight">
-            <FileUp className="w-5 h-5 mr-2 text-amber-600" />
+            <FileUp className="w-5 h-5 mr-2 text-amber-700" />
             기존 데이터 가져오기 (XLSX/CSV)
           </h3>
           <p className="text-xs font-medium text-brand-muted mb-5 leading-relaxed">
             기존 엑셀 파일(.xlsx, .csv)을 업로드하여 데이터를 일괄 등록합니다.<br/>
-            <span className="text-amber-700 font-bold flex items-center mt-1">
-              <AlertTriangle className="w-3 h-3 mr-1" />
+            <span className="text-amber-700 font-bold flex items-start mt-1">
+              <AlertTriangle className="w-3 h-3 mr-1 mt-0.5 shrink-0" />
               다목적실1(무인자동차), 다목적실2(스낵헌터), 다목적실3(메디봇) 데이터가 자동으로 분류되어 감지됩니다.
             </span>
           </p>
 
           <label className={cn(
-            "w-full flex items-center justify-center space-x-2 py-3.5 rounded-2xl text-sm font-bold transition-all shadow-md cursor-pointer",
-            isImporting 
-              ? "bg-white/50 text-brand-muted cursor-not-allowed border border-white/60" 
-              : "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white active:scale-[0.98]"
+            "w-full min-h-11 flex items-center justify-center space-x-2 py-3.5 rounded-2xl text-sm font-bold transition-all shadow-md cursor-pointer",
+            "has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-brand-blue has-[:focus-visible]:outline-offset-2",
+            isImporting
+              ? "bg-white/50 text-brand-muted cursor-not-allowed border border-white/60"
+              : "bg-brand-dark hover:bg-brand-black text-white active:scale-[0.98] border border-brand-dark/50"
           )}>
             <Upload className="w-4 h-4" />
             <span>{isImporting ? '데이터 처리 중...' : '엑셀 파일 선택 및 업로드'}</span>
@@ -322,7 +364,7 @@ export default function SettingsPage() {
               accept=".xlsx,.xls,.csv"
               onChange={handleImportFile}
               disabled={isImporting}
-              className="hidden"
+              className="sr-only"
             />
           </label>
         </div>
@@ -338,18 +380,18 @@ export default function SettingsPage() {
           
           <div className="bg-white/40 border border-white/60 shadow-sm backdrop-blur-sm rounded-2xl p-4">
             {user?.email !== 'wlgns1232356@gmail.com' ? (
-              <div className="text-center py-4 text-xs font-bold text-rose-500">
+              <div className="text-center py-4 text-xs font-bold text-rose-700">
                 ⚠️ 최고 관리자 계정(wlgns1232356@gmail.com)만 비밀번호를 변경할 수 있습니다.
               </div>
             ) : !isPinEditing ? (
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-xs text-brand-muted font-bold block mb-1">현재 비밀번호</span>
-                  <span className="text-lg font-black tracking-widest text-brand-dark">******</span>
+                  <span className="text-lg font-black tracking-widest text-brand-dark" aria-hidden="true">******</span>
                 </div>
                 <button
                   onClick={() => setIsPinEditing(true)}
-                  className="bg-white/80 border border-white hover:bg-white text-brand-dark px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95"
+                  className="min-h-11 bg-white/80 border border-white hover:bg-white text-brand-dark px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95"
                 >
                   비밀번호 변경
                 </button>
@@ -364,7 +406,7 @@ export default function SettingsPage() {
                     value={newPin}
                     onChange={(e) => setNewPin(e.target.value.replace(/[^0-9]/g, ''))}
                     placeholder="새로운 6자리 또는 8자리 숫자"
-                    className="w-full bg-white/80 border border-white rounded-xl px-3 py-2 text-sm tracking-widest font-bold text-brand-dark focus:outline-none   shadow-sm"
+                    className="w-full min-h-11 bg-white/80 border border-white rounded-xl px-3 py-2 text-sm tracking-widest font-bold text-brand-dark tnum shadow-sm"
                     autoFocus
                   />
                 </div>
@@ -374,14 +416,14 @@ export default function SettingsPage() {
                       setIsPinEditing(false);
                       setNewPin('');
                     }}
-                    className="bg-white/60 border border-white/60 hover:bg-white/80 text-brand-muted px-3 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95"
+                    className="min-h-11 bg-white/60 border border-white/60 hover:bg-white/80 text-brand-muted hover:text-brand-dark px-3 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95"
                   >
                     취소
                   </button>
                   <button
                     onClick={handleUpdatePin}
                     disabled={newPin.length !== 6 && newPin.length !== 8}
-                    className="bg-brand-dark hover:bg-brand-black disabled:opacity-50 disabled:bg-brand-dark disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 flex items-center space-x-1"
+                    className="min-h-11 bg-brand-dark hover:bg-brand-black disabled:opacity-50 disabled:bg-brand-dark disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 flex items-center justify-center space-x-1"
                   >
                     <Check className="w-3.5 h-3.5" />
                     <span>저장</span>
@@ -403,12 +445,12 @@ export default function SettingsPage() {
               <span className="text-brand-dark font-bold">네트워크 연결</span>
               {navigator.onLine ? (
                 <div className="flex items-center space-x-2 bg-emerald-50/80 px-3 py-1.5 rounded-full border border-emerald-100/50 shadow-sm">
-                  <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                  <div className="w-2 h-2 bg-emerald-700 rounded-full animate-pulse" />
                   <span className="text-emerald-800 font-bold text-xs">온라인</span>
                 </div>
               ) : (
                 <div className="flex items-center space-x-2 bg-rose-50/80 px-3 py-1.5 rounded-full border border-rose-100/50 shadow-sm">
-                  <CloudOff className="w-3 h-3 text-rose-500" />
+                  <CloudOff className="w-3 h-3 text-rose-700" />
                   <span className="text-rose-800 font-bold text-xs">오프라인</span>
                 </div>
               )}
@@ -417,12 +459,12 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between text-sm bg-white/40 backdrop-blur-sm p-3.5 rounded-2xl border border-white/60 shadow-sm">
               <div className="flex flex-col">
                 <span className="text-brand-dark font-bold">오프라인 대기열</span>
-                <span className="text-[10px] font-medium text-brand-muted mt-0.5">서버로 전송되지 못한 데이터</span>
+                <span className="text-3xs font-medium text-brand-muted mt-0.5">서버로 전송되지 못한 데이터</span>
               </div>
               {pendingSyncCount > 0 ? (
                 <div className="flex items-center space-x-1.5 bg-amber-50/80 border border-amber-100/50 px-3 py-1.5 rounded-xl shadow-sm">
-                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                  <span className="text-amber-800 font-black text-sm">{pendingSyncCount}건 대기중</span>
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
+                  <span className="text-amber-800 font-black text-sm tnum">{pendingSyncCount}건 대기중</span>
                 </div>
               ) : (
                 <div className="bg-white/50 text-brand-muted px-3 py-1.5 rounded-xl font-bold text-xs border border-white/60 shadow-sm">
@@ -432,7 +474,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <p className="text-[11px] font-medium text-brand-muted mt-4 leading-relaxed px-1">
+          <p className="text-2xs font-medium text-brand-muted mt-4 leading-relaxed px-1">
             인터넷이 끊긴 오프라인 상태에서도 기기에 안전하게 임시 저장되며, 네트워크가 다시 복구되면 <strong className="text-brand-dark">서버로 자동 동기화</strong>됩니다.
           </p>
         </div>
@@ -445,7 +487,7 @@ export default function SettingsPage() {
           <div className="space-y-3 text-sm bg-white/40 backdrop-blur-sm p-4 rounded-2xl border border-white/60 shadow-sm">
             <div className="flex justify-between items-center">
               <span className="text-brand-muted font-bold">버전</span>
-              <span className="text-brand-dark font-black bg-white/80 px-2 py-1 rounded-lg border border-white shadow-sm text-xs">{UPDATE_HISTORY[0].version}</span>
+              <span className="text-brand-dark font-black bg-white/80 px-2 py-1 rounded-lg border border-white shadow-sm text-xs tnum text-selectable">{UPDATE_HISTORY[0].version}</span>
             </div>
             <div className="h-px bg-white/50 w-full" />
             <div className="flex justify-between items-center">
@@ -465,9 +507,10 @@ export default function SettingsPage() {
                 <div key={item.version} className="bg-white/50 backdrop-blur-sm rounded-2xl border border-white/60 shadow-sm overflow-hidden">
                   <button 
                     onClick={() => toggleVersion(item.version)}
-                    className="w-full flex items-center justify-between p-3.5 text-left hover:bg-white/60 transition-colors"
+                    aria-expanded={!!expandedVersions[item.version]}
+                    className="w-full min-h-11 flex items-center justify-between p-3.5 text-left hover:bg-white/60 transition-colors"
                   >
-                    <span className="font-bold text-brand-dark text-sm">v{item.version}</span>
+                    <span className="font-bold text-brand-dark text-sm tnum text-selectable">v{item.version}</span>
                     {expandedVersions[item.version] ? (
                       <ChevronUp className="w-4 h-4 text-brand-muted" />
                     ) : (
@@ -489,7 +532,7 @@ export default function SettingsPage() {
               {!showAllHistory && UPDATE_HISTORY.length > 3 && (
                 <button 
                   onClick={() => setShowAllHistory(true)}
-                  className="w-full py-2 text-xs font-bold text-brand-muted hover:text-brand-dark transition-colors flex items-center justify-center space-x-1"
+                  className="w-full min-h-11 py-2 text-xs font-bold text-brand-muted hover:text-brand-dark transition-colors flex items-center justify-center space-x-1"
                 >
                   <span>과거 내역 더보기</span>
                   <ChevronDown className="w-3 h-3" />

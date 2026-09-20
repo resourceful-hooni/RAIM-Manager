@@ -41,9 +41,26 @@ const CARD = 'bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px
 const CARD_HEADING = 'text-sm font-extrabold text-brand-dark mb-2 flex items-center tracking-tight';
 const CARD_DESC = 'text-xs font-medium text-brand-muted mb-5 leading-relaxed';
 const SUB_PANEL = 'bg-white/40 border border-white/60 shadow-sm backdrop-blur-sm rounded-2xl p-4';
-const PILL = 'px-3 py-2 text-xs font-bold rounded-xl transition-all active:scale-95 border focus:outline-none';
+// min-h-11 = 2.75rem — 이 앱의 루트 폰트(17px)에서 46.75px로, 태블릿 터치 최소 크기를 넘긴다
+const PILL = 'inline-flex items-center justify-center min-h-11 px-3 py-2 text-xs font-bold rounded-xl transition-all active:scale-95 border';
 const PILL_ON = 'bg-white/80 text-brand-blue border-white shadow-sm';
 const PILL_OFF = 'bg-transparent text-brand-muted border-transparent hover:text-brand-dark';
+const ACTION_BUTTON = 'flex items-center justify-center space-x-2 min-h-11 py-3 rounded-xl text-xs font-bold transition-all active:scale-95 disabled:opacity-50';
+
+/** 태블릿 세로에서 열이 뭉개지지 않도록 표에 주는 최소 폭 (넘치면 가로 스크롤) */
+const TABLE_MIN_WIDTH = 'min-w-[38rem]';
+
+/**
+ * 연속 저장 사이의 간격.
+ * 브라우저는 사용자 제스처 한 번에 여러 파일이 저장되면 두 번째부터 막는 경우가 있어,
+ * 저장 요청을 조금씩 떨어뜨려 차단 가능성을 낮춘다.
+ */
+const SAVE_GAP_MS = 400;
+
+const wait = (ms: number) =>
+  new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
 
 const SORT_OPTIONS: { value: SortOrder; label: string }[] = [
   { value: 'applied', label: '신청일 순' },
@@ -168,16 +185,46 @@ export default function AttendancePage() {
       toast.warning('내려받을 명단이 없습니다.');
       return;
     }
+    // 파일명에는 회차 정보만 들어가고 신청자 정보는 담기지 않는다 (실패 안내에 그대로 써도 안전)
+    const tasks = targets.flatMap((group) => [
+      { fileName: attendanceFileName(group, label), run: () => downloadAttendanceXlsx(group, label) },
+      { fileName: smsFileName(group), run: () => downloadSmsCsv(group, csvEncoding) },
+    ]);
+
     try {
       setIsProcessing(true);
-      toast.info('파일 생성 중...');
-      for (const group of targets) {
-        await downloadAttendanceXlsx(group, label);
-        await downloadSmsCsv(group, csvEncoding);
+      toast.info(`파일 ${tasks.length}개를 만드는 중...`);
+
+      const failedFiles: string[] = [];
+      let savedCount = 0;
+
+      for (let index = 0; index < tasks.length; index += 1) {
+        // 첫 파일은 바로, 이후에는 한 박자 쉬고 저장한다
+        if (index > 0) await wait(SAVE_GAP_MS);
+        try {
+          await tasks[index].run();
+          savedCount += 1;
+        } catch {
+          failedFiles.push(tasks[index].fileName);
+        }
       }
-      toast.success(`${targets.length}개 회차의 출석부와 문자발송 파일을 내려받았습니다.`);
-    } catch {
-      toast.error('파일을 만드는 중 오류가 발생했습니다.');
+
+      if (failedFiles.length === 0) {
+        toast.success(`${targets.length}개 회차 · 파일 ${savedCount}개를 내려받았습니다.`, {
+          description:
+            tasks.length > 1
+              ? '받은 파일 수가 모자라면 브라우저가 연속 저장을 막은 것입니다. 주소창의 다운로드 차단 표시에서 허용한 뒤 회차별 버튼으로 다시 받아 주세요.'
+              : undefined,
+        });
+      } else if (savedCount > 0) {
+        toast.warning(`파일 ${savedCount}개를 내려받고 ${failedFiles.length}개는 실패했습니다.`, {
+          description: `실패: ${failedFiles.join(', ')} — 회차별 버튼으로 다시 내려받아 주세요.`,
+        });
+      } else {
+        toast.error('파일을 하나도 내려받지 못했습니다.', {
+          description: '잠시 후 회차별 버튼으로 다시 시도해 주세요.',
+        });
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -204,12 +251,14 @@ export default function AttendancePage() {
           여러 프로그램 파일을 한 번에 올릴 수 있습니다.
         </p>
 
+        {/* 파일 입력은 sr-only로 숨긴다 — hidden이면 키보드 포커스를 받지 못한다 */}
         <label
           className={cn(
-            'w-full flex items-center justify-center space-x-2 py-3.5 rounded-2xl text-sm font-bold transition-all shadow-md cursor-pointer',
+            'w-full flex items-center justify-center space-x-2 min-h-11 py-3.5 rounded-2xl text-sm font-bold transition-all shadow-md cursor-pointer',
+            'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-brand-blue has-[:focus-visible]:outline-offset-2',
             isProcessing
               ? 'bg-white/50 text-brand-muted cursor-not-allowed border border-white/60'
-              : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white active:scale-[0.98]',
+              : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-brand-black active:scale-[0.98]',
           )}
         >
           <Upload className="w-4 h-4" />
@@ -220,11 +269,11 @@ export default function AttendancePage() {
             multiple
             onChange={handleUpload}
             disabled={isProcessing}
-            className="hidden"
+            className="sr-only"
           />
         </label>
 
-        <div className="mt-4 flex items-start space-x-2 text-[11px] font-medium text-brand-muted leading-relaxed">
+        <div className="mt-4 flex items-start space-x-2 text-2xs font-medium text-brand-muted leading-relaxed">
           <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-px" />
           <span>
             업로드한 파일은 <strong>브라우저 안에서만</strong> 변환됩니다. 신청자 이름과 연락처는 서버나 데이터베이스에 저장되지 않고,
@@ -252,19 +301,22 @@ export default function AttendancePage() {
                   placeholder="위크앤드"
                   className="w-full bg-white/70 border border-white rounded-xl px-3 py-2 text-sm font-medium text-brand-dark placeholder:text-brand-muted/60"
                 />
-                <p className="text-[11px] font-medium text-brand-muted mt-2 leading-relaxed">
+                <p className="text-2xs font-medium text-brand-muted mt-2 leading-relaxed">
                   출석부 제목은 <span className="font-bold">{buildAttendanceTitle(groups[0], label)}</span> 형태로 들어갑니다.
                 </p>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3">
                 <div className={cn(SUB_PANEL, 'flex-1')}>
-                  <p className="text-xs font-bold text-brand-dark mb-2">정렬</p>
-                  <div className="flex flex-wrap gap-1">
+                  <p id="attendance-sort-label" className="text-xs font-bold text-brand-dark mb-2">
+                    정렬
+                  </p>
+                  <div role="group" aria-labelledby="attendance-sort-label" className="flex flex-wrap gap-1">
                     {SORT_OPTIONS.map((option) => (
                       <button
                         key={option.value}
                         type="button"
+                        aria-pressed={sortOrder === option.value}
                         onClick={() => setSortOrder(option.value)}
                         className={cn(PILL, sortOrder === option.value ? PILL_ON : PILL_OFF)}
                       >
@@ -275,12 +327,15 @@ export default function AttendancePage() {
                 </div>
 
                 <div className={cn(SUB_PANEL, 'flex-1')}>
-                  <p className="text-xs font-bold text-brand-dark mb-2">문자발송 파일 인코딩</p>
-                  <div className="flex flex-wrap gap-1">
+                  <p id="attendance-encoding-label" className="text-xs font-bold text-brand-dark mb-2">
+                    문자발송 파일 인코딩
+                  </p>
+                  <div role="group" aria-labelledby="attendance-encoding-label" className="flex flex-wrap gap-1">
                     {ENCODING_OPTIONS.map((option) => (
                       <button
                         key={option.value}
                         type="button"
+                        aria-pressed={csvEncoding === option.value}
                         onClick={() => setCsvEncoding(option.value)}
                         className={cn(PILL, csvEncoding === option.value ? PILL_ON : PILL_OFF)}
                       >
@@ -294,25 +349,27 @@ export default function AttendancePage() {
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   type="button"
+                  aria-pressed={includeCancelled}
                   onClick={() => setIncludeCancelled((prev) => !prev)}
-                  className={cn(SUB_PANEL, 'flex-1 text-left active:scale-[0.99] transition-all')}
+                  className={cn(SUB_PANEL, 'flex-1 min-h-11 text-left active:scale-[0.99] transition-all')}
                 >
                   <p className="text-xs font-bold text-brand-dark">취소·미결제 건 포함</p>
-                  <p className="text-[11px] font-medium text-brand-muted mt-1">
+                  <p className="text-2xs font-medium text-brand-muted mt-1">
                     {includeCancelled ? '포함 — 전체 예약 건을 출석부에 넣습니다.' : '제외 — 예약완료 + 결제완료 건만 넣습니다.'}
                   </p>
                 </button>
 
                 <button
                   type="button"
+                  aria-pressed={showPersonalData}
                   onClick={() => setShowPersonalData((prev) => !prev)}
-                  className={cn(SUB_PANEL, 'flex-1 text-left active:scale-[0.99] transition-all')}
+                  className={cn(SUB_PANEL, 'flex-1 min-h-11 text-left active:scale-[0.99] transition-all')}
                 >
                   <p className="text-xs font-bold text-brand-dark flex items-center">
                     {showPersonalData ? <Eye className="w-4 h-4 mr-1.5" /> : <EyeOff className="w-4 h-4 mr-1.5" />}
                     화면에 이름·연락처 표시
                   </p>
-                  <p className="text-[11px] font-medium text-brand-muted mt-1">
+                  <p className="text-2xs font-medium text-brand-muted mt-1">
                     {showPersonalData ? '표시 중 — 확인이 끝나면 다시 가려 주세요.' : '가림 — 내려받는 파일에는 원본이 그대로 들어갑니다.'}
                   </p>
                 </button>
@@ -324,16 +381,18 @@ export default function AttendancePage() {
                 type="button"
                 onClick={handleDownloadAll}
                 disabled={isProcessing}
-                className="flex-1 flex items-center justify-center space-x-2 bg-brand-dark hover:bg-brand-black text-white py-3 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
+                className={cn(ACTION_BUTTON, 'flex-1 bg-brand-dark hover:bg-brand-black text-white shadow-md')}
               >
                 <Download className="w-4 h-4" />
-                <span>전체 내려받기 ({groups.length}개 회차)</span>
+                <span>
+                  전체 내려받기 (<span className="tnum">{groups.length}</span>개 회차)
+                </span>
               </button>
               <button
                 type="button"
                 onClick={handleReset}
                 disabled={isProcessing}
-                className="flex items-center justify-center space-x-2 bg-white/80 border border-white hover:bg-white text-brand-dark py-3 px-4 rounded-xl text-xs font-bold transition-all active:scale-95 disabled:opacity-50"
+                className={cn(ACTION_BUTTON, 'bg-white/80 border border-white hover:bg-white text-brand-dark px-4')}
               >
                 <Trash2 className="w-4 h-4" />
                 <span>불러온 정보 지우기</span>
@@ -352,62 +411,105 @@ export default function AttendancePage() {
                   </p>
                 </div>
                 <div className="text-xs font-bold text-brand-blue bg-white/60 border border-white rounded-xl px-3 py-2 shrink-0">
-                  {group.entries.length}건 · {group.totalHeadcount}명
+                  <span className="tnum">{group.entries.length}</span>건 · <span className="tnum">{group.totalHeadcount}</span>명
                   {group.excludedEntries.length > 0 && (
-                    <span className="text-brand-muted font-medium"> (제외 {group.excludedEntries.length}건)</span>
+                    <span className="text-brand-muted font-medium">
+                      {' '}
+                      (제외 <span className="tnum">{group.excludedEntries.length}</span>건)
+                    </span>
                   )}
                 </div>
               </div>
 
-              <div className="overflow-x-auto -mx-2 px-2">
-                <table className="w-full text-xs select-text">
-                  <thead>
-                    <tr className="text-brand-muted font-bold border-b border-white/80">
-                      <th className="text-left py-2 pr-2 font-bold">#</th>
-                      <th className="text-left py-2 pr-2 font-bold">신청자</th>
-                      <th className="text-left py-2 pr-2 font-bold">연락처</th>
-                      <th className="text-left py-2 pr-2 font-bold">인원</th>
-                      <th className="text-left py-2 pr-2 font-bold">학생</th>
-                      <th className="text-left py-2 pr-2 font-bold">학년</th>
-                      <th className="text-left py-2 font-bold">비고</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-brand-dark font-medium">
+              {group.entries.length === 0 ? (
+                <p className="py-6 text-center text-xs font-medium text-brand-muted">확정된 예약이 없습니다.</p>
+              ) : (
+                <>
+                  {/* 태블릿·데스크톱: 표. 최소 폭을 줘야 좁은 화면에서 열이 뭉개지지 않고 가로 스크롤이 걸린다 */}
+                  <div className="hidden sm:block overflow-x-auto -mx-2 px-2">
+                    <table className={cn('w-full text-xs', TABLE_MIN_WIDTH)}>
+                      <thead>
+                        <tr className="text-brand-muted font-bold border-b border-white/80">
+                          <th scope="col" className="text-left py-2 pr-2 font-bold">#</th>
+                          <th scope="col" className="text-left py-2 pr-2 font-bold">신청자</th>
+                          <th scope="col" className="text-left py-2 pr-2 font-bold">연락처</th>
+                          <th scope="col" className="text-left py-2 pr-2 font-bold">인원</th>
+                          <th scope="col" className="text-left py-2 pr-2 font-bold">학생</th>
+                          <th scope="col" className="text-left py-2 pr-2 font-bold">학년</th>
+                          <th scope="col" className="text-left py-2 font-bold">비고</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-brand-dark font-medium">
+                        {group.entries.map((entry, index) => (
+                          <tr key={`${group.id}-${index}`} className="border-b border-white/50 last:border-0">
+                            <td className="py-2 pr-2 text-brand-muted tnum">{index + 1}</td>
+                            <td className="py-2 pr-2 whitespace-nowrap">
+                              <span className="text-selectable">
+                                {showPersonalData ? entry.applicantName : maskName(entry.applicantName)}
+                              </span>
+                              {!entry.confirmed && <span className="ml-1 text-3xs text-rose-700 font-bold">{entry.status}</span>}
+                            </td>
+                            <td className="py-2 pr-2 whitespace-nowrap tnum text-selectable">
+                              {showPersonalData ? entry.phone : maskPhone(entry.phone)}
+                            </td>
+                            <td className="py-2 pr-2 tnum">{entry.headcount}</td>
+                            <td className="py-2 pr-2 text-selectable">
+                              {showPersonalData ? entry.studentNames : maskNameList(entry.studentNames)}
+                            </td>
+                            <td className="py-2 pr-2 text-selectable">{entry.studentGrades}</td>
+                            <td className="py-2 text-brand-muted">{buildCompositionNote(entry)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* 좁은 화면: 같은 내용을 카드로. 가리기 규칙은 표와 동일하다 */}
+                  <ul className="sm:hidden space-y-2">
                     {group.entries.map((entry, index) => (
-                      <tr key={`${group.id}-${index}`} className="border-b border-white/50 last:border-0">
-                        <td className="py-2 pr-2 text-brand-muted">{index + 1}</td>
-                        <td className="py-2 pr-2 whitespace-nowrap">
-                          {showPersonalData ? entry.applicantName : maskName(entry.applicantName)}
-                          {!entry.confirmed && <span className="ml-1 text-[10px] text-rose-500 font-bold">{entry.status}</span>}
-                        </td>
-                        <td className="py-2 pr-2 whitespace-nowrap">
-                          {showPersonalData ? entry.phone : maskPhone(entry.phone)}
-                        </td>
-                        <td className="py-2 pr-2">{entry.headcount}</td>
-                        <td className="py-2 pr-2">
-                          {showPersonalData ? entry.studentNames : maskNameList(entry.studentNames)}
-                        </td>
-                        <td className="py-2 pr-2">{entry.studentGrades}</td>
-                        <td className="py-2 text-brand-muted">{buildCompositionNote(entry)}</td>
-                      </tr>
+                      <li key={`${group.id}-card-${index}`} className={cn(SUB_PANEL, 'space-y-1')}>
+                        <div className="flex items-baseline justify-between gap-2">
+                          <p className="text-sm font-bold text-brand-dark">
+                            <span className="tnum text-brand-muted mr-1.5 font-medium">{index + 1}</span>
+                            <span className="text-selectable">
+                              {showPersonalData ? entry.applicantName : maskName(entry.applicantName)}
+                            </span>
+                            {!entry.confirmed && <span className="ml-1 text-3xs text-rose-700 font-bold">{entry.status}</span>}
+                          </p>
+                          <p className="text-xs font-bold text-brand-blue shrink-0">
+                            <span className="tnum">{entry.headcount}</span>명
+                          </p>
+                        </div>
+                        <p className="text-2xs font-medium text-brand-muted">
+                          연락처{' '}
+                          <span className="text-brand-dark font-bold tnum text-selectable">
+                            {showPersonalData ? entry.phone : maskPhone(entry.phone)}
+                          </span>
+                        </p>
+                        {(entry.studentNames || entry.studentGrades) && (
+                          <p className="text-2xs font-medium text-brand-muted">
+                            학생{' '}
+                            <span className="text-brand-dark text-selectable">
+                              {showPersonalData ? entry.studentNames : maskNameList(entry.studentNames)}
+                            </span>
+                            {entry.studentGrades && <span className="text-brand-dark text-selectable"> · {entry.studentGrades}</span>}
+                          </p>
+                        )}
+                        {buildCompositionNote(entry) && (
+                          <p className="text-2xs font-medium text-brand-muted">{buildCompositionNote(entry)}</p>
+                        )}
+                      </li>
                     ))}
-                    {group.entries.length === 0 && (
-                      <tr>
-                        <td colSpan={7} className="py-6 text-center text-brand-muted font-medium">
-                          확정된 예약이 없습니다.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                  </ul>
+                </>
+              )}
 
               <div className="flex flex-col sm:flex-row gap-3 mt-5">
                 <button
                   type="button"
                   onClick={() => handleDownloadAttendance(group)}
                   disabled={isProcessing}
-                  className="flex-1 flex items-center justify-center space-x-2 bg-emerald-600/90 hover:bg-emerald-600 border border-emerald-500/50 text-white py-3 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
+                  className={cn(ACTION_BUTTON, 'flex-1 bg-emerald-700 hover:bg-emerald-800 border border-emerald-800/40 text-white shadow-md')}
                 >
                   <FileSpreadsheet className="w-4 h-4" />
                   <span>출석부 XLSX</span>
@@ -416,14 +518,16 @@ export default function AttendancePage() {
                   type="button"
                   onClick={() => handleDownloadSms(group)}
                   disabled={isProcessing}
-                  className="flex-1 flex items-center justify-center space-x-2 bg-indigo-600/90 hover:bg-indigo-600 border border-indigo-500/50 text-white py-3 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
+                  className={cn(ACTION_BUTTON, 'flex-1 bg-brand-blue hover:bg-brand-dark border border-brand-dark/30 text-white shadow-md')}
                 >
                   <MessageSquare className="w-4 h-4" />
-                  <span>문자발송 CSV ({buildSmsList(group.entries).length}건)</span>
+                  <span>
+                    문자발송 CSV (<span className="tnum">{buildSmsList(group.entries).length}</span>건)
+                  </span>
                 </button>
               </div>
 
-              <p className="text-[11px] font-medium text-brand-muted mt-3 leading-relaxed">
+              <p className="text-2xs font-medium text-brand-muted mt-3 leading-relaxed">
                 파일명: {attendanceFileName(group, label)} · {smsFileName(group)}
               </p>
             </div>

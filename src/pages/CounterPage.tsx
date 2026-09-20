@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { format } from 'date-fns';
 import { useStore, RecordType, Counts, ProgramType } from '@/store/useStore';
 import { vibrate, cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { RotateCcw, Plus, Minus, FileText, Clock, Users, Undo2, RefreshCw, X } from 'lucide-react';
+import { RotateCcw, Plus, Minus, FileText, Clock, Users, Undo2, X, ChevronDown, CalendarClock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 // 스케줄 설정
@@ -65,32 +65,46 @@ export const getSessionsForProgram = (program: ProgramType, dateStr: string) => 
 
 const AUTONOMOUS_HOURS = Array.from({ length: 8 }, (_, i) => `${10 + i}시`);
 
-const CATEGORIES: { id: string; label: string; color: string; fields: { id: keyof Counts; label: string }[] }[] = [
+// color: 카드 머리말의 점 / addButton: + 버튼 채움색.
+// 채움색은 모두 흰 글씨 기준 5:1 이상이라 AA를 통과하면서도 카테고리를 색으로 구분할 수 있다.
+const CATEGORIES: { id: string; label: string; color: string; addButton: string; fields: { id: keyof Counts; label: string }[] }[] = [
   { 
     id: 'adult', 
     label: '성인 (Adult)', 
     color: 'bg-blue-500',
+    addButton: 'bg-blue-700 hover:bg-blue-800',
     fields: [{ id: 'adult_m', label: '남' }, { id: 'adult_f', label: '여' }]
   },
   { 
     id: 'youth', 
     label: '청소년 (Youth)', 
     color: 'bg-emerald-500',
+    addButton: 'bg-emerald-700 hover:bg-emerald-800',
     fields: [{ id: 'youth_m', label: '남' }, { id: 'youth_f', label: '여' }]
   },
   { 
     id: 'child', 
     label: '어린이 (Child)', 
     color: 'bg-amber-500',
+    addButton: 'bg-amber-700 hover:bg-amber-800',
     fields: [{ id: 'child_m', label: '남' }, { id: 'child_f', label: '여' }]
   },
   { 
     id: 'infant', 
     label: '유아 (Infant)', 
     color: 'bg-rose-500',
+    addButton: 'bg-rose-700 hover:bg-rose-800',
     fields: [{ id: 'infant_m', label: '남' }, { id: 'infant_f', label: '여' }]
   },
 ];
+
+const TYPE_LABELS: Record<RecordType, string> = {
+  autonomous: '자율관람',
+  reserved: '예약관람',
+};
+
+// '성인 (Adult)' → '성인' (스크린리더 라벨과 카드 제목에 함께 쓴다)
+const shortLabel = (label: string) => label.split(' ')[0];
 
 const INITIAL_COUNTS: Counts = {
   adult_m: 0, adult_f: 0,
@@ -151,6 +165,16 @@ export default function CounterPage() {
   const [groupMemo, setGroupMemo] = useState('');
   
   const [showUndo, setShowUndo] = useState(false);
+
+  // 메모 디바운스용. 입력 중에는 초안(memoDraft)을 보여주고 저장은 500ms 뒤에 한 번만 한다.
+  const [memoDraft, setMemoDraft] = useState<string | null>(null);
+  const memoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const memoFlushRef = useRef<(() => void) | null>(null);
+
+  // 입력 대상(관람 모드 · 회차) 변경 안내용
+  const prevTargetRef = useRef<string | null>(null);
+  const userSetTargetRef = useRef<string | null>(null);
+  const mountedAtRef = useRef(Date.now());
 
   useEffect(() => {
     if (lastAction) {
@@ -227,6 +251,29 @@ export default function CounterPage() {
     return () => clearInterval(intervalId);
   }, [isAutoSync, type, lastAction, activeProgram, lastTypeSwitchTime]);
 
+  // 실시간 연동이 관람 모드/회차를 바꾸면 조용히 넘어가지 않고 알린다.
+  // 연동 로직은 건드리지 않고 결과만 관찰한다.
+  useEffect(() => {
+    const target = `${type}|${session}`;
+    const prev = prevTargetRef.current;
+    prevTargetRef.current = target;
+
+    if (prev === null || prev === target) return;
+
+    // 사용자가 직접 바꾼 경우에는 해당 핸들러가 이미 안내했다
+    if (userSetTargetRef.current === target) {
+      userSetTargetRef.current = null;
+      return;
+    }
+
+    // 첫 렌더 직후 연동이 현재 시각에 맞추는 것은 '변경'이 아니라 초기 설정이다
+    if (Date.now() - mountedAtRef.current < 1500) return;
+
+    toast.info(`입력 대상이 ${TYPE_LABELS[type]} · ${session}(으)로 바뀌었습니다.`, {
+      description: '실시간 연동이 시각에 맞춰 회차를 바꿨습니다. 카운트할 회차가 맞는지 확인해 주세요.',
+    });
+  }, [type, session]);
+
   const record = useStore(useCallback((state: any) => state.records.find((r: any) => r.date === date && r.type === type && r.session === session && (r.program || '무인자동차') === activeProgram), [date, type, session, activeProgram])) as any;
   const rawCounts = record?.counts || INITIAL_COUNTS;
   const counts = {
@@ -242,6 +289,32 @@ export default function CounterPage() {
     cancelled: rawCounts.cancelled || 0,
   };
   const memo = record?.memo || '';
+  const visitorTotal = CATEGORIES.reduce(
+    (sum, cat) => sum + cat.fields.reduce((inner, field) => inner + (counts[field.id] as number), 0),
+    0
+  );
+
+  const targetKey = `${date}|${type}|${session}|${activeProgram}`;
+
+  // 대기 중인 메모를 지금 즉시 저장한다 (대상 변경 · 화면 이탈 · 단체 입력 직전)
+  const flushMemo = () => {
+    if (memoTimerRef.current !== null) {
+      clearTimeout(memoTimerRef.current);
+      memoTimerRef.current = null;
+    }
+    const pending = memoFlushRef.current;
+    memoFlushRef.current = null;
+    pending?.();
+  };
+
+  // 대상이 바뀌거나 화면을 떠나면, 대기 중인 메모를 '이전 대상'에 저장하고 초안을 비운다
+  useEffect(() => {
+    setMemoDraft(null);
+    return () => {
+      flushMemo();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetKey]);
 
   const handleIncrement = (category: keyof Counts) => {
     vibrate(50);
@@ -255,10 +328,45 @@ export default function CounterPage() {
     }
   };
 
+  // 메모는 키 입력마다 저장하지 않고 500ms 멈춘 뒤 한 번만 저장한다 (저장 형태는 그대로).
+  const handleMemoChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    const target = { date, type, session, program: activeProgram };
+
+    setMemoDraft(value);
+    memoFlushRef.current = () => {
+      updateMemo(target.date, target.type, target.session, target.program, value);
+    };
+
+    if (memoTimerRef.current !== null) clearTimeout(memoTimerRef.current);
+    memoTimerRef.current = setTimeout(() => {
+      memoTimerRef.current = null;
+      const pending = memoFlushRef.current;
+      memoFlushRef.current = null;
+      pending?.();
+      setMemoDraft(null); // 저장이 끝나면 다시 기록을 원본으로 삼는다
+    }, 500);
+  };
+
+  // 입력칸에서 포커스가 빠지면 500ms를 기다리지 않고 바로 저장한다
+  const handleMemoBlur = () => {
+    flushMemo();
+    setMemoDraft(null);
+  };
+
   const handleReset = () => {
-    if (window.confirm('현재 세션의 모든 카운트를 0으로 초기화하시겠습니까?')) {
+    const targetLabel = `${date} · ${TYPE_LABELS[type]} · ${session}`;
+    const erased = type === 'reserved'
+      ? '성인 · 청소년 · 어린이 · 유아 인원과 취소 · 노쇼 인원'
+      : '성인 · 청소년 · 어린이 · 유아 인원';
+
+    const proceed = window.confirm(
+      `[${targetLabel}]\n\n이 회차에 입력된 ${erased}이(가) 모두 0이 됩니다.\n다른 날짜·회차의 기록과 이 회차의 메모는 지워지지 않습니다.\n\n초기화한 카운트는 되돌릴 수 없습니다. 초기화하시겠습니까?`
+    );
+
+    if (proceed) {
       resetCounts(date, type, session, activeProgram);
-      toast.success('카운트가 0으로 초기화되었습니다.');
+      toast.success(`${TYPE_LABELS[type]} ${session} 카운트를 0으로 초기화했습니다.`);
     }
   };
 
@@ -268,8 +376,19 @@ export default function CounterPage() {
   };
 
   const handleSessionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    // 직접 고른 회차는 변경 안내(toast) 대상이 아니다
+    userSetTargetRef.current = `${type}|${e.target.value}`;
     setIsAutoSync(false);
     setSession(e.target.value);
+  };
+
+  // 관람 모드를 바꾸면 회차도 함께 바뀐다. 조용히 바뀌지 않도록 바뀐 대상을 알린다.
+  const announceTarget = (nextType: RecordType, nextSession: string, description?: string) => {
+    userSetTargetRef.current = `${nextType}|${nextSession}`;
+    toast.info(
+      `입력 대상: ${TYPE_LABELS[nextType]} · ${nextSession}`,
+      description ? { description } : undefined
+    );
   };
 
   const handleTypeChange = (newType: RecordType) => {
@@ -293,18 +412,27 @@ export default function CounterPage() {
         // Manual override for today during reserved time!
         setType(newType);
         setIsAutoSync(false); // Important: because they bypassed the active reserved window
+        announceTarget(
+          newType,
+          AUTONOMOUS_HOURS[0],
+          '실시간 연동이 해제되고 회차가 첫 시간대로 맞춰졌습니다. 회차를 확인해 주세요.'
+        );
         setSession(AUTONOMOUS_HOURS[0]); // fallback to first, or leave it
         return;
       }
-      
+
+      const nextSession = getCurrentSession(newType, activeProgram, now, date);
       setType(newType);
       setIsAutoSync(true);
       setLastTypeSwitchTime(Date.now());
-      setSession(getCurrentSession(newType, activeProgram, now, date));
+      announceTarget(newType, nextSession);
+      setSession(nextSession);
     } else {
       // Manual mode (no time restriction)
+      const nextSession = newType === 'autonomous' ? AUTONOMOUS_HOURS[0] : getSessionsForProgram(activeProgram, date).reserved[0];
       setType(newType);
-      setSession(newType === 'autonomous' ? AUTONOMOUS_HOURS[0] : getSessionsForProgram(activeProgram, date).reserved[0]);
+      announceTarget(newType, nextSession, '수동 모드라 회차가 첫 시간대로 맞춰졌습니다. 회차를 확인해 주세요.');
+      setSession(nextSession);
     }
   };
 
@@ -314,6 +442,9 @@ export default function CounterPage() {
       toast.error('입력할 인원을 설정해주세요.');
       return;
     }
+    // 대기 중인 메모를 먼저 저장해야 단체 메모가 덧붙는 대상이 최신 메모가 된다
+    flushMemo();
+    setMemoDraft(null);
     addGroupCount(date, type, session, activeProgram, groupCounts, groupMemo);
     setIsGroupModalOpen(false);
     setGroupCounts(INITIAL_COUNTS);
@@ -323,29 +454,30 @@ export default function CounterPage() {
   };
 
   return (
-    <div className="p-3 sm:p-4 space-y-4 sm:space-y-6 max-w-xl mx-auto">
+    <div className="p-3 sm:p-4 space-y-3 sm:space-y-4 max-w-xl lg:max-w-4xl mx-auto">
       {/* Controls */}
-      <div className="space-y-3 sm:space-y-4 bg-white/40 backdrop-blur-2xl p-4 sm:p-6 rounded-3xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] relative overflow-hidden">
-        <div className="flex justify-between items-center mb-2">
+      <div className="space-y-3 bg-white/40 backdrop-blur-2xl p-3.5 sm:p-4 rounded-3xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] relative overflow-hidden">
+        <div className="flex justify-between items-center gap-2">
           <h2 className="text-sm font-extrabold text-brand-dark tracking-tight">관람 모드 및 시간</h2>
-          <button 
+          <button
             onClick={() => setIsAutoSync(!isAutoSync)}
             className={cn(
-              "flex items-center space-x-1.5 text-xs px-3 py-1.5 rounded-full transition-all active:scale-95",
-              isAutoSync 
-                ? "bg-brand-cyan/20 text-brand-dark font-bold border border-brand-cyan/30 shadow-sm backdrop-blur-sm" 
+              "flex items-center space-x-1.5 text-xs min-h-11 px-3.5 rounded-full transition-all active:scale-95",
+              isAutoSync
+                ? "bg-brand-cyan/20 text-brand-dark font-bold border border-brand-cyan/30 shadow-sm backdrop-blur-sm"
                 : "bg-white/50 text-brand-muted hover:bg-white/80 font-medium border border-white/60 backdrop-blur-sm"
             )}
           >
-            <Clock className={cn("w-3.5 h-3.5", isAutoSync && "animate-pulse")} />
+            <Clock className={cn("w-3.5 h-3.5", isAutoSync && "animate-pulse")} aria-hidden="true" />
             <span>{isAutoSync ? '실시간 연동 중' : '수동 모드 (연동 켜기)'}</span>
           </button>
         </div>
 
         <div className="flex bg-white/40 rounded-xl p-1.5 border border-white/60 shadow-sm backdrop-blur-sm relative">
           <button
+            aria-pressed={type === 'autonomous'}
             className={cn(
-              "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all active:scale-95 focus:outline-none focus:ring-0 focus-visible:ring-0 border relative z-10",
+              "flex-1 min-h-11 text-sm font-bold rounded-lg transition-all active:scale-95 border relative z-10",
               type === 'autonomous' ? "bg-white/80 text-brand-blue shadow-sm border-transparent" : "text-brand-muted hover:text-brand-dark border-transparent"
             )}
             onClick={() => handleTypeChange('autonomous')}
@@ -353,8 +485,9 @@ export default function CounterPage() {
             자율관람 (Autonomous)
           </button>
           <button
+            aria-pressed={type === 'reserved'}
             className={cn(
-              "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all active:scale-95 focus:outline-none focus:ring-0 focus-visible:ring-0 border relative z-10",
+              "flex-1 min-h-11 text-sm font-bold rounded-lg transition-all active:scale-95 border relative z-10",
               type === 'reserved' ? "bg-white/80 text-brand-blue shadow-sm border-transparent" : "text-brand-muted hover:text-brand-dark border-transparent"
             )}
             onClick={() => handleTypeChange('reserved')}
@@ -368,175 +501,239 @@ export default function CounterPage() {
             type="date"
             value={date}
             onChange={handleDateChange}
+            aria-label="카운트할 날짜"
             className={cn(
-              "bg-white/50 backdrop-blur-[16px] border border-white/60 rounded-xl px-4 py-3 text-sm font-medium text-brand-dark focus:outline-none focus:ring-0 focus-visible:ring-0 flex-1 transition-all shadow-sm",
+              "bg-white/50 backdrop-blur-[16px] border border-white/60 rounded-xl px-4 min-h-11 text-sm font-medium text-brand-dark flex-1 transition-all shadow-sm",
               isAutoSync ? "border-brand-cyan/30" : "border-white/60"
             )}
           />
           {type === 'autonomous' && isAutoSync ? (
-            <div className="flex-1 bg-brand-light/10 backdrop-blur-sm border border-brand-light/20 rounded-xl px-4 py-3 text-sm text-brand-dark flex items-center justify-between font-bold shadow-sm">
-              <div className="flex items-center">
-                <Clock className="w-4 h-4 mr-2 text-brand-blue shrink-0" />
-                <span className="text-sm font-bold">{session} (현재)</span>
+            <div className="flex-1 bg-brand-light/10 backdrop-blur-sm border border-brand-light/20 rounded-xl px-4 min-h-11 py-2 text-sm text-brand-dark flex items-center justify-between font-bold shadow-sm">
+              <div className="flex items-center min-w-0">
+                <Clock className="w-4 h-4 mr-2 text-brand-blue shrink-0" aria-hidden="true" />
+                <span className="text-sm font-bold truncate">{session} (현재)</span>
               </div>
-              <span className="text-xs bg-brand-blue/90 text-white px-2 py-0.5 rounded-full shadow-sm shrink-0">자동</span>
+              <span className="text-2xs bg-brand-blue/90 text-white px-2 py-0.5 rounded-full shadow-sm shrink-0">자동</span>
             </div>
           ) : (
-            <select
-              value={session}
-              onChange={handleSessionChange}
+            <div className="relative flex-1">
+              <select
+                value={session}
+                onChange={handleSessionChange}
+                aria-label="카운트할 회차"
+                className={cn(
+                  "w-full bg-white/50 backdrop-blur-[16px] border border-white/60 rounded-xl pl-4 pr-10 min-h-11 text-sm font-medium text-brand-dark transition-all shadow-sm appearance-none",
+                  isAutoSync ? "border-brand-cyan/30" : "border-white/60"
+                )}
+              >
+                {(type === 'autonomous' ? AUTONOMOUS_HOURS : getSessionsForProgram(activeProgram, date).reserved).map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+              <ChevronDown
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted"
+                aria-hidden="true"
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 지금 어느 회차에 입력 중인지 스크롤해도 계속 보이게 한다 */}
+      <div className="sticky top-0 z-20 -mx-3 sm:-mx-4 px-3 sm:px-4 py-1">
+        <div className="flex items-center justify-between gap-2 rounded-2xl border border-white/70 bg-white/70 px-3 py-2 shadow-[0_6px_24px_rgba(0,0,0,0.06)] backdrop-blur-2xl">
+          <div className="flex items-center gap-2 min-w-0">
+            <CalendarClock className="w-4 h-4 shrink-0 text-brand-blue" aria-hidden="true" />
+            <div className="min-w-0">
+              <p className="text-3xs font-bold tracking-wider text-brand-muted">입력 중인 회차</p>
+              <p className="truncate text-sm font-extrabold tracking-tight text-brand-dark">
+                {TYPE_LABELS[type]} · {session}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span
               className={cn(
-                "bg-white/50 backdrop-blur-[16px] border border-white/60 rounded-xl px-4 py-3 text-sm font-medium text-brand-dark focus:outline-none focus:ring-0 focus-visible:ring-0 flex-1 transition-all shadow-sm appearance-none",
-                isAutoSync ? "border-brand-cyan/30" : "border-white/60"
+                "rounded-full border px-2 py-0.5 text-3xs font-bold",
+                isAutoSync
+                  ? "border-brand-cyan/40 bg-brand-cyan/20 text-brand-dark"
+                  : "border-white/70 bg-white/60 text-brand-muted"
               )}
             >
-              {(type === 'autonomous' ? AUTONOMOUS_HOURS : getSessionsForProgram(activeProgram, date).reserved).map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          )}
+              {isAutoSync ? '실시간 연동' : '수동'}
+            </span>
+            <span className="text-2xs font-bold text-brand-muted">합계</span>
+            <span className="tnum text-lg font-black leading-none text-brand-black" aria-live="polite">
+              {visitorTotal}
+            </span>
+            <span className="text-2xs font-bold text-brand-muted">명</span>
+          </div>
         </div>
       </div>
 
       {/* Group Entry Button */}
       <button
         onClick={() => setIsGroupModalOpen(true)}
-        className="w-full flex items-center justify-center space-x-2 py-3.5 rounded-xl text-brand-blue bg-white/40 backdrop-blur-xl hover:bg-white/80 transition-all text-sm font-bold border border-white/60 shadow-[0_4px_20px_rgba(0,0,0,0.03)] active:scale-95"
+        className="w-full flex items-center justify-center space-x-2 min-h-11 py-3 rounded-xl text-brand-blue bg-white/40 backdrop-blur-xl hover:bg-white/80 transition-all text-sm font-bold border border-white/60 shadow-[0_4px_20px_rgba(0,0,0,0.03)] active:scale-95"
       >
-        <Users className="w-5 h-5" />
+        <Users className="w-5 h-5" aria-hidden="true" />
         <span>단체 입력 모드 (한 번에 여러 명 입력)</span>
       </button>
 
       {/* Counters */}
-      <div className="grid grid-cols-2 gap-3">
-        {CATEGORIES.map((cat) => (
-          <div key={cat.id} className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-3 relative overflow-hidden group">
-            <div className="flex justify-between items-center mb-3 mt-1">
-              <span className="text-brand-dark font-extrabold text-xs tracking-tight">{cat.label.split(' ')[0]}</span>
-              <motion.span 
-                key={(counts[cat.fields[0].id] as number) + (counts[cat.fields[1].id] as number)}
-                initial={{ scale: 1.3, color: '#00BFDF' }}
-                animate={{ scale: 1, color: '#000000' }}
-                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                className="text-xl font-black text-brand-black tracking-tighter"
-              >
-                {(counts[cat.fields[0].id] as number) + (counts[cat.fields[1].id] as number)}
-              </motion.span>
-            </div>
-            
-            <div className="space-y-3">
-              {cat.fields.map(field => (
-                <div key={field.id} className="space-y-1.5">
-                  <div className="flex justify-between items-end px-1">
-                    <span className="text-xs font-semibold text-brand-muted">{field.label}</span>
-                    <motion.span 
-                      key={counts[field.id]}
-                      initial={{ scale: 1.4, color: '#00BFDF' }}
-                      animate={{ scale: 1, color: '#000000' }}
-                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                      className="text-sm font-bold text-brand-dark"
-                    >
-                      {counts[field.id]}
-                    </motion.span>
-                  </div>
-                  <div className="flex space-x-1.5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+        {CATEGORIES.map((cat) => {
+          const catName = shortLabel(cat.label);
+          const catTotal = (counts[cat.fields[0].id] as number) + (counts[cat.fields[1].id] as number);
+
+          return (
+            <div key={cat.id} className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-2.5 sm:p-3 relative overflow-hidden">
+              <div className="flex justify-between items-center gap-1 mb-2 px-0.5">
+                <span className="flex items-center gap-1.5 text-brand-dark font-extrabold text-xs tracking-tight min-w-0">
+                  <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", cat.color)} aria-hidden="true" />
+                  <span className="truncate">{catName}</span>
+                </span>
+                <span className="tnum text-xl font-black text-brand-black tracking-tighter leading-none">
+                  <motion.span
+                    key={catTotal}
+                    initial={{ scale: 1.3, color: '#00BFDF' }}
+                    animate={{ scale: 1, color: '#000000' }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                    className="inline-block"
+                  >
+                    {catTotal}
+                  </motion.span>
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                {cat.fields.map(field => (
+                  <div key={field.id} className="flex items-center gap-1.5">
                     <motion.button
                       whileTap={{ scale: 0.85 }}
                       onClick={() => handleDecrement(field.id)}
-                      className="flex-1 bg-white/50 hover:bg-white/80 text-brand-muted rounded-xl py-1.5 flex items-center justify-center transition-all border border-white/60 shadow-sm active:shadow-inner"
+                      aria-label={`${catName} ${field.label} 1명 빼기`}
+                      className="min-h-11 w-11 shrink-0 bg-white/50 hover:bg-white/80 text-brand-muted rounded-xl flex items-center justify-center transition-all border border-white/60 shadow-sm active:shadow-inner"
                     >
-                      <Minus className="w-3.5 h-3.5" />
+                      <Minus className="w-4 h-4" aria-hidden="true" />
                     </motion.button>
+                    <div className="flex-1 min-w-0 flex flex-col items-center justify-center leading-none">
+                      <span className="text-3xs font-bold text-brand-muted">{field.label}</span>
+                      {/* 숫자가 바뀌면 스크린리더가 읽어 주도록 바깥 span은 그대로 두고 안쪽만 교체한다 */}
+                      <span className="tnum text-base font-black text-brand-dark mt-1" aria-live="polite">
+                        <motion.span
+                          key={counts[field.id]}
+                          initial={{ scale: 1.4, color: '#00BFDF' }}
+                          animate={{ scale: 1, color: '#000000' }}
+                          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                          className="inline-block"
+                        >
+                          {counts[field.id]}
+                        </motion.span>
+                      </span>
+                    </div>
                     <motion.button
                       whileTap={{ scale: 0.9 }}
                       onClick={() => handleIncrement(field.id)}
-                      className={cn("flex-[2] text-white rounded-xl py-1.5 flex items-center justify-center transition-all shadow-md active:shadow-inner", cat.color)}
+                      aria-label={`${catName} ${field.label} 1명 추가`}
+                      className={cn(
+                        "min-h-11 flex-1 min-w-11 text-white rounded-xl flex items-center justify-center transition-all shadow-md active:shadow-inner",
+                        cat.addButton,
+                      )}
                     >
-                      <Plus className="w-4 h-4" />
+                      <Plus className="w-5 h-5" aria-hidden="true" />
                     </motion.button>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* No-show & Reset */}
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         {type === 'reserved' && (
-          <div className="space-y-4">
-            <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-4 flex items-center justify-between group">
-              <div className="flex items-center space-x-3">
-                <div className="bg-white/50 p-2.5 rounded-xl text-amber-500 shadow-sm border border-white/60">
-                  <Users className="w-5 h-5" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 sm:gap-3">
+            <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-3 sm:p-3.5 flex items-center justify-between gap-2">
+              <div className="flex items-center space-x-3 min-w-0">
+                <div className="bg-white/50 p-2.5 rounded-xl text-rose-600 shadow-sm border border-white/60 shrink-0">
+                  <Users className="w-5 h-5" aria-hidden="true" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h3 className="text-sm font-bold text-brand-dark">취소</h3>
-                  <p className="text-xs text-brand-muted font-medium">예약 취소 인원</p>
+                  <p className="text-2xs text-brand-muted font-medium">예약 취소 인원</p>
                 </div>
               </div>
-              <div className="flex items-center space-x-4">
-                <motion.span 
-                  key={counts.cancelled}
-                  initial={{ scale: 1.4, color: '#f59e0b' }}
-                  animate={{ scale: 1, color: '#000000' }}
-                  className="text-xl font-black text-brand-black w-8 text-center"
-                >
-                  {counts.cancelled}
-                </motion.span>
+              <div className="flex items-center space-x-2 shrink-0">
+                <span className="tnum text-xl font-black text-brand-black w-9 text-center" aria-live="polite">
+                  <motion.span
+                    key={counts.cancelled}
+                    initial={{ scale: 1.4, color: '#E11D48' }}
+                    animate={{ scale: 1, color: '#000000' }}
+                    className="inline-block"
+                  >
+                    {counts.cancelled}
+                  </motion.span>
+                </span>
                 <div className="flex space-x-2">
                   <motion.button
                     whileTap={{ scale: 0.85 }}
                     onClick={() => handleDecrement('cancelled')}
-                    className="bg-white/50 hover:bg-white/80 text-brand-muted rounded-xl p-2 transition-all border border-white/60 shadow-sm active:shadow-inner"
+                    aria-label="취소 인원 1명 빼기"
+                    className="bg-white/50 hover:bg-white/80 text-brand-muted rounded-xl min-h-11 w-11 flex items-center justify-center transition-all border border-white/60 shadow-sm active:shadow-inner"
                   >
-                    <Minus className="w-4 h-4" />
+                    <Minus className="w-4 h-4" aria-hidden="true" />
                   </motion.button>
                   <motion.button
                     whileTap={{ scale: 0.9 }}
                     onClick={() => handleIncrement('cancelled')}
-                    className="bg-brand-dark hover:bg-brand-black text-white rounded-xl p-2 transition-all shadow-md active:shadow-inner"
+                    aria-label="취소 인원 1명 추가"
+                    className="bg-brand-dark hover:bg-brand-blue text-white rounded-xl min-h-11 w-11 flex items-center justify-center transition-all shadow-md active:shadow-inner"
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-4 h-4" aria-hidden="true" />
                   </motion.button>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-4 flex items-center justify-between group">
-              <div className="flex items-center space-x-3">
-                <div className="bg-white/50 p-2.5 rounded-xl text-brand-muted shadow-sm border border-white/60">
-                  <Users className="w-5 h-5" />
+            <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl p-3 sm:p-3.5 flex items-center justify-between gap-2">
+              <div className="flex items-center space-x-3 min-w-0">
+                <div className="bg-white/50 p-2.5 rounded-xl text-amber-700 shadow-sm border border-white/60 shrink-0">
+                  <Users className="w-5 h-5" aria-hidden="true" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h3 className="text-sm font-bold text-brand-dark">노쇼 (No-show)</h3>
-                  <p className="text-xs text-brand-muted font-medium">예약 후 방문하지 않은 인원</p>
+                  <p className="text-2xs text-brand-muted font-medium">예약 후 방문하지 않은 인원</p>
                 </div>
               </div>
-              <div className="flex items-center space-x-4">
-                <motion.span 
-                  key={counts.noShow}
-                  initial={{ scale: 1.4, color: '#e11d48' }}
-                  animate={{ scale: 1, color: '#000000' }}
-                  className="text-xl font-black text-brand-black w-8 text-center"
-                >
-                  {counts.noShow}
-                </motion.span>
+              <div className="flex items-center space-x-2 shrink-0">
+                <span className="tnum text-xl font-black text-brand-black w-9 text-center" aria-live="polite">
+                  <motion.span
+                    key={counts.noShow}
+                    initial={{ scale: 1.4, color: '#B45309' }}
+                    animate={{ scale: 1, color: '#000000' }}
+                    className="inline-block"
+                  >
+                    {counts.noShow}
+                  </motion.span>
+                </span>
                 <div className="flex space-x-2">
                   <motion.button
                     whileTap={{ scale: 0.85 }}
                     onClick={() => handleDecrement('noShow')}
-                    className="bg-white/50 hover:bg-white/80 text-brand-muted rounded-xl p-2 transition-all border border-white/60 shadow-sm active:shadow-inner"
+                    aria-label="노쇼 인원 1명 빼기"
+                    className="bg-white/50 hover:bg-white/80 text-brand-muted rounded-xl min-h-11 w-11 flex items-center justify-center transition-all border border-white/60 shadow-sm active:shadow-inner"
                   >
-                    <Minus className="w-4 h-4" />
+                    <Minus className="w-4 h-4" aria-hidden="true" />
                   </motion.button>
                   <motion.button
                     whileTap={{ scale: 0.9 }}
                     onClick={() => handleIncrement('noShow')}
-                    className="bg-brand-dark hover:bg-brand-black text-white rounded-xl p-2 transition-all shadow-md active:shadow-inner"
+                    aria-label="노쇼 인원 1명 추가"
+                    className="bg-brand-dark hover:bg-brand-blue text-white rounded-xl min-h-11 w-11 flex items-center justify-center transition-all shadow-md active:shadow-inner"
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-4 h-4" aria-hidden="true" />
                   </motion.button>
                 </div>
               </div>
@@ -544,25 +741,29 @@ export default function CounterPage() {
           </div>
         )}
 
-        <div className="relative">
-          <div className="absolute top-3.5 left-3.5 text-brand-muted">
-            <FileText className="w-4 h-4" />
+        <div className="flex flex-col lg:flex-row lg:items-end gap-3">
+          <div className="relative flex-1">
+            <div className="absolute top-3.5 left-3.5 text-brand-muted pointer-events-none">
+              <FileText className="w-4 h-4" aria-hidden="true" />
+            </div>
+            <textarea
+              value={memoDraft ?? memo}
+              onChange={handleMemoChange}
+              onBlur={handleMemoBlur}
+              aria-label="특이사항 메모"
+              placeholder="특이사항 (단체명, 장비 이슈 등)..."
+              className="w-full text-selectable bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl pl-10 pr-4 py-3.5 text-sm text-brand-dark placeholder-brand-muted min-h-[80px] resize-none transition-all"
+            />
           </div>
-          <textarea
-            value={memo}
-            onChange={(e) => updateMemo(date, type, session, activeProgram, e.target.value)}
-            placeholder="특이사항 (단체명, 장비 이슈 등)..."
-            className="w-full bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl pl-10 pr-4 py-3.5 text-sm text-brand-dark placeholder-brand-muted focus:outline-none    min-h-[80px] resize-none transition-all"
-          />
-        </div>
 
-        <button
-          onClick={handleReset}
-          className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl text-rose-600 bg-white/40 backdrop-blur-xl hover:bg-white/80 transition-all text-sm font-bold border border-white/60 shadow-[0_4px_20px_rgba(0,0,0,0.03)] active:scale-95"
-        >
-          <RotateCcw className="w-4 h-4" />
-          <span>현재 세션 초기화</span>
-        </button>
+          <button
+            onClick={handleReset}
+            className="w-full lg:w-52 shrink-0 flex items-center justify-center space-x-2 min-h-11 py-3 rounded-xl text-rose-700 bg-white/40 backdrop-blur-xl hover:bg-white/80 transition-all text-sm font-bold border border-white/60 shadow-[0_4px_20px_rgba(0,0,0,0.03)] active:scale-95"
+          >
+            <RotateCcw className="w-4 h-4" aria-hidden="true" />
+            <span>현재 세션 초기화</span>
+          </button>
+        </div>
       </div>
 
       {/* Undo Floating Button */}
@@ -576,9 +777,9 @@ export default function CounterPage() {
           >
             <button
               onClick={undoLastAction}
-              className="pointer-events-auto flex items-center space-x-2 bg-brand-dark/80 backdrop-blur-md text-white px-5 py-3 rounded-full shadow-xl hover:bg-brand-black active:scale-95 transition-all border border-brand-dark/50"
+              className="pointer-events-auto flex items-center space-x-2 bg-brand-dark/90 backdrop-blur-md text-white px-5 min-h-11 rounded-full shadow-xl hover:bg-brand-black active:scale-95 transition-all border border-brand-dark/50"
             >
-              <Undo2 className="w-4 h-4" />
+              <Undo2 className="w-4 h-4" aria-hidden="true" />
               <span className="text-sm font-medium">방금 입력 취소</span>
             </button>
           </motion.div>
@@ -590,52 +791,64 @@ export default function CounterPage() {
         {isGroupModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md">
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="group-entry-title"
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white/80 backdrop-blur-xl border border-white/50 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
+              className="bg-white/80 backdrop-blur-xl border border-white/50 rounded-2xl shadow-2xl w-full max-w-sm sm:max-w-md max-h-[85dvh] flex flex-col overflow-hidden"
             >
-              <div className="p-4 border-b border-white/50 flex justify-between items-center bg-white/40">
-                <h3 className="font-bold text-brand-dark flex items-center">
-                  <Users className="w-5 h-5 mr-2 text-brand-blue" />
+              <div className="p-4 border-b border-white/50 flex justify-between items-center bg-white/40 shrink-0">
+                <h3 id="group-entry-title" className="font-bold text-brand-dark flex items-center">
+                  <Users className="w-5 h-5 mr-2 text-brand-blue" aria-hidden="true" />
                   단체 입력
                 </h3>
-                <button onClick={() => setIsGroupModalOpen(false)} className="text-brand-muted hover:text-brand-dark active:scale-95 transition-transform">
-                  ✕
+                <button
+                  onClick={() => setIsGroupModalOpen(false)}
+                  aria-label="단체 입력 닫기"
+                  className="min-h-11 w-11 -mr-2 flex items-center justify-center rounded-xl text-brand-muted hover:text-brand-dark hover:bg-white/60 active:scale-95 transition-all"
+                >
+                  <X className="w-5 h-5" aria-hidden="true" />
                 </button>
               </div>
-              
-              <div className="p-4 space-y-4">
+
+              {/* 화상 키보드가 올라와도 아래 버튼에 닿을 수 있도록 본문만 스크롤한다 */}
+              <div className="p-4 space-y-4 flex-1 min-h-0 overflow-y-auto overscroll-contain">
                 <div className="space-y-4">
                   {CATEGORIES.map(cat => (
                     <div key={cat.id} className="space-y-2">
-                      <label className="text-xs font-bold text-brand-dark">{cat.label}</label>
+                      <span className="text-xs font-bold text-brand-dark">{cat.label}</span>
                       <div className="grid grid-cols-2 gap-3">
                         {cat.fields.map(field => (
                           <div key={field.id} className="flex flex-col">
-                            <label className="text-xs font-medium text-brand-muted mb-1">{field.label}</label>
+                            <label htmlFor={`group-${field.id}`} className="text-2xs font-medium text-brand-muted mb-1">{field.label}</label>
                             <div className="flex items-center border border-white/50 rounded-lg overflow-hidden bg-white/60 shadow-sm backdrop-blur-sm">
                               <button
                                 type="button"
                                 onClick={() => setGroupCounts(prev => ({ ...prev, [field.id]: Math.max(0, (prev[field.id] || 0) - 1) }))}
-                                className="px-3 py-2 bg-white/40 text-brand-muted hover:bg-white/80 border-r border-white/50 active:bg-white/90 transition-all active:scale-95"
+                                aria-label={`${shortLabel(cat.label)} ${field.label} 1명 빼기`}
+                                className="min-h-11 px-3 shrink-0 bg-white/40 text-brand-muted hover:bg-white/80 border-r border-white/50 active:bg-white/90 transition-all active:scale-95"
                               >
-                                <Minus className="w-4 h-4" />
+                                <Minus className="w-4 h-4" aria-hidden="true" />
                               </button>
                               <input
+                                id={`group-${field.id}`}
                                 type="number"
                                 min="0"
+                                inputMode="numeric"
                                 value={groupCounts[field.id] || ''}
                                 onChange={(e) => setGroupCounts(prev => ({ ...prev, [field.id]: parseInt(e.target.value) || 0 }))}
-                                className="w-full bg-transparent text-center py-2 text-brand-dark focus:outline-none text-sm font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                className="tnum w-full bg-transparent text-center min-h-11 text-brand-dark text-sm font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 placeholder="0"
                               />
                               <button
                                 type="button"
                                 onClick={() => setGroupCounts(prev => ({ ...prev, [field.id]: (prev[field.id] || 0) + 1 }))}
-                                className="px-3 py-2 bg-white/40 text-brand-muted hover:bg-white/80 border-l border-white/50 active:bg-white/90 transition-all active:scale-95"
+                                aria-label={`${shortLabel(cat.label)} ${field.label} 1명 추가`}
+                                className="min-h-11 px-3 shrink-0 bg-white/40 text-brand-muted hover:bg-white/80 border-l border-white/50 active:bg-white/90 transition-all active:scale-95"
                               >
-                                <Plus className="w-4 h-4" />
+                                <Plus className="w-4 h-4" aria-hidden="true" />
                               </button>
                             </div>
                           </div>
@@ -644,29 +857,30 @@ export default function CounterPage() {
                     </div>
                   ))}
                 </div>
-                
+
                 <div className="flex flex-col">
-                  <label className="text-xs font-medium text-brand-muted mb-1">단체명 / 메모 (선택)</label>
+                  <label htmlFor="group-memo" className="text-2xs font-medium text-brand-muted mb-1">단체명 / 메모 (선택)</label>
                   <input
+                    id="group-memo"
                     type="text"
                     value={groupMemo}
                     onChange={(e) => setGroupMemo(e.target.value)}
-                    className="bg-white/60 backdrop-blur-sm border border-white/50 rounded-lg px-3 py-2 text-brand-dark focus:outline-none  shadow-sm placeholder-brand-muted/70"
+                    className="bg-white/60 backdrop-blur-sm border border-white/50 rounded-lg px-3 min-h-11 text-sm text-brand-dark shadow-sm placeholder-brand-muted/70"
                     placeholder="예: OO초등학교 3학년 1반"
                   />
                 </div>
               </div>
 
-              <div className="p-4 bg-white/40 border-t border-white/50 flex space-x-2 backdrop-blur-md">
+              <div className="p-4 bg-white/40 border-t border-white/50 flex space-x-2 backdrop-blur-md shrink-0">
                 <button
                   onClick={() => setIsGroupModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl text-brand-muted bg-brand-light/10 backdrop-blur-sm border border-brand-light/20 font-medium text-sm hover:bg-white/80 active:scale-95 transition-transform shadow-sm"
+                  className="flex-1 min-h-11 py-2.5 rounded-xl text-brand-muted bg-brand-light/10 backdrop-blur-sm border border-brand-light/20 font-medium text-sm hover:bg-white/80 active:scale-95 transition-transform shadow-sm"
                 >
                   취소
                 </button>
                 <button
                   onClick={handleGroupSubmit}
-                  className="flex-1 py-2.5 rounded-xl text-white bg-brand-blue font-medium text-sm hover:bg-brand-dark shadow-md active:scale-95 transition-transform border border-brand-blue/50"
+                  className="flex-1 min-h-11 py-2.5 rounded-xl text-white bg-brand-blue font-bold text-sm hover:bg-brand-dark shadow-md active:scale-95 transition-transform border border-brand-blue/50"
                 >
                   일괄 추가
                 </button>

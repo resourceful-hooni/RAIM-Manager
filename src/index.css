@@ -1,68 +1,77 @@
 @import "tailwindcss";
 
+/* Paperlogy — SIL Open Font License 1.1, 지정된 Reserved Font Name 없음.
+   전문과 출처는 public/fonts/LICENSE.txt 참고.
+
+   CDN(fastly.jsdelivr.net)에서 자체 호스팅으로 전환했다. 박물관 와이파이가
+   느리거나 끊기면 CDN 폰트는 아예 안 내려와서 글꼴 없이 렌더됐고, 오프라인
+   상태에서는 영원히 못 받았다. 오프라인 우선 앱에서 말이 안 되는 동작이라
+   public/fonts/ 로 옮겨 서비스 워커가 미리 캐시하도록 했다.
+
+   앱이 실제로 쓰는 6개 굵기만 남겼다(기존 9개). 100/200/300은 코드베이스에
+   사용처가 없다. 글자 수는 줄이지 않았다 — 예약자 이름을 Firestore에서 그대로
+   받아 표시하므로 현대 한글 11,172자를 전부 유지해야 한다.
+
+   font-display: swap — 폰트가 늦어도 본문이 먼저 보인다. */
 @font-face {
   font-family: 'Paperlogy';
-  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-1Thin.woff2') format('woff2');
-  font-weight: 100;
-  font-style: normal;
-}
-@font-face {
-  font-family: 'Paperlogy';
-  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-2ExtraLight.woff2') format('woff2');
-  font-weight: 200;
-  font-style: normal;
-}
-@font-face {
-  font-family: 'Paperlogy';
-  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-3Light.woff2') format('woff2');
-  font-weight: 300;
-  font-style: normal;
-}
-@font-face {
-  font-family: 'Paperlogy';
-  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-4Regular.woff2') format('woff2');
+  src: url('/fonts/Paperlogy-4Regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
+  font-display: swap;
 }
 @font-face {
   font-family: 'Paperlogy';
-  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-5Medium.woff2') format('woff2');
+  src: url('/fonts/Paperlogy-5Medium.woff2') format('woff2');
   font-weight: 500;
   font-style: normal;
+  font-display: swap;
 }
 @font-face {
   font-family: 'Paperlogy';
-  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-6SemiBold.woff2') format('woff2');
+  src: url('/fonts/Paperlogy-6SemiBold.woff2') format('woff2');
   font-weight: 600;
   font-style: normal;
+  font-display: swap;
 }
 @font-face {
   font-family: 'Paperlogy';
-  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-7Bold.woff2') format('woff2');
+  src: url('/fonts/Paperlogy-7Bold.woff2') format('woff2');
   font-weight: 700;
   font-style: normal;
+  font-display: swap;
 }
 @font-face {
   font-family: 'Paperlogy';
-  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-8ExtraBold.woff2') format('woff2');
+  src: url('/fonts/Paperlogy-8ExtraBold.woff2') format('woff2');
   font-weight: 800;
   font-style: normal;
+  font-display: swap;
 }
 @font-face {
   font-family: 'Paperlogy';
-  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-9Black.woff2') format('woff2');
+  src: url('/fonts/Paperlogy-9Black.woff2') format('woff2');
   font-weight: 900;
   font-style: normal;
+  font-display: swap;
 }
 
 @theme {
   --font-sans: "Paperlogy", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Apple SD Gothic Neo", system-ui, sans-serif;
   --color-brand-cyan: #1FBDC6;
   --color-brand-light: #00BFDF;
-  --color-brand-muted: #508EBC;
+  /* 본문 배경(#f8fafc) 위에서 5.05:1 — 기존 #508EBC는 3.38:1로 WCAG AA 미달이었다 */
+  --color-brand-muted: #3D7099;
   --color-brand-blue: #276FB7;
   --color-brand-dark: #00448B;
   --color-brand-black: #000000;
+
+  /* 작은 라벨용 단계. 하드코딩된 text-[8px]~[11px] 대신 이 토큰을 쓴다.
+     rem 기반이라 데스크톱에서 루트 폰트가 커지면 같이 커진다. */
+  --text-3xs: 0.625rem;
+  --text-3xs--line-height: 1.35;
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1.4;
 }
 
 html {
@@ -100,25 +109,42 @@ body {
 
 * {
   -webkit-tap-highlight-color: transparent !important;
-  outline: none !important;
 }
 
-/* Global Focus / Outline Reset to prevent annoying focus rings on click */
-button, button:focus, button:active, button:focus-visible,
-a, a:focus, a:active, a:focus-visible,
-input, input:focus, input:active, input:focus-visible,
-select, select:focus, select:active, select:focus-visible,
-textarea, textarea:focus, textarea:active, textarea:focus-visible,
-[role="button"], [role="button"]:focus, [role="button"]:active, [role="button"]:focus-visible,
-*:focus, *:focus-visible, *:active {
-  outline: 0px solid transparent !important;
-  outline: none !important;
-  outline-offset: 0px !important;
-  box-shadow: var(--tw-shadow, none) !important; /* Strips focus rings/glows while preserving core shadows */
-  --tw-ring-color: transparent !important;
-  --tw-ring-width: 0px !important;
-  --tw-ring-offset-width: 0px !important;
-  --tw-ring-offset-color: transparent !important;
+/* 마우스·터치로 누를 때는 링을 띄우지 않되, 키보드 이동은 반드시 보이게 한다.
+   (이전에는 outline을 전역 !important로 없애 키보드로 앱을 쓸 수 없었다) */
+*:focus {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--color-brand-blue);
+  outline-offset: 2px;
+  border-radius: inherit;
+}
+
+/* 움직임을 줄이도록 설정한 기기에서는 애니메이션을 사실상 끈다 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 숫자가 바뀔 때 자릿수가 흔들리지 않도록 (집계 숫자·통계 표에 사용) */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* body에 user-select:none이 걸려 있어, 직원이 값을 복사해야 하는 곳에만 푼다 */
+.text-selectable {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 /* Ensure form elements and buttons strictly inherit Paperlogy font */

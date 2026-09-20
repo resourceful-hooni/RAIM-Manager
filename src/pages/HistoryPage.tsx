@@ -68,15 +68,17 @@ export default function HistoryPage() {
           <h2 className="text-xl font-extrabold text-brand-dark tracking-tight">전체 기록 (History)</h2>
         </div>
 
-        <div className="flex flex-wrap gap-2 relative">
+        <div className="flex flex-wrap gap-1 p-1 bg-white/50 backdrop-blur-sm rounded-2xl border border-white/60 shadow-sm relative">
           {['all', '무인자동차', '스낵헌터', '메디봇'].map((prog) => (
             <button
               key={prog}
+              type="button"
+              aria-pressed={programFilter === prog}
               className={cn(
-                "px-4 py-2 text-sm font-bold rounded-xl transition-all active:scale-95 border focus:outline-none relative z-10",
-                programFilter === prog 
-                  ? "bg-white/80 text-brand-blue border-white shadow-sm" 
-                  : "bg-white/40 text-brand-muted border-white/50 hover:text-brand-dark"
+                "inline-flex items-center justify-center min-h-11 px-4 text-sm font-bold rounded-xl transition-all active:scale-95 border relative z-10",
+                programFilter === prog
+                  ? "bg-white/80 text-brand-blue border-white shadow-sm"
+                  : "bg-transparent text-brand-muted border-transparent hover:text-brand-dark hover:bg-white/60"
               )}
               onClick={() => setProgramFilter(prog as any)}
             >
@@ -94,15 +96,22 @@ export default function HistoryPage() {
             placeholder="메모 내용으로 검색..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-white/60 backdrop-blur-sm border border-white/60 rounded-2xl pl-10 pr-4 py-3.5 text-sm font-medium text-brand-dark placeholder-brand-muted focus:outline-none    transition-all shadow-sm"
+            className="w-full min-h-11 bg-white/60 backdrop-blur-sm border border-white/60 rounded-2xl pl-10 pr-4 py-3.5 text-sm font-medium text-brand-dark placeholder-brand-muted transition-all shadow-sm"
           />
         </div>
       </div>
       
       {groupedRecords.length === 0 ? (
         <div className="text-center text-brand-muted py-16 bg-white/40 backdrop-blur-2xl rounded-[2rem] border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)]">
-          <FileText className="w-8 h-8 mx-auto mb-3 text-brand-muted/70" />
-          <p className="font-medium text-sm">일치하는 기록이 없습니다.</p>
+          <FileText className="w-8 h-8 mx-auto mb-3 text-brand-muted" aria-hidden="true" />
+          <p className="font-bold text-sm text-brand-dark">일치하는 기록이 없습니다.</p>
+          <p className="mt-1.5 text-xs font-medium px-6">
+            {searchTerm
+              ? '검색어를 지우거나 다른 프로그램을 선택해 주세요.'
+              : programFilter === 'all'
+                ? '카운터 화면에서 기록을 저장하면 이곳에 표시됩니다.'
+                : `${programFilter} 프로그램의 기록이 아직 없습니다. 다른 프로그램을 선택해 주세요.`}
+          </p>
         </div>
       ) : (
         <div className="space-y-4 pb-10">
@@ -119,19 +128,20 @@ export default function HistoryPage() {
               <div key={date} className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl overflow-hidden">
                 <button 
                   onClick={() => toggleDate(date)}
-                  className="w-full flex items-center justify-between p-4 bg-white/40 border-b border-white/50 hover:bg-white/60 transition-colors active:bg-white/80"
+                  aria-expanded={isExpanded}
+                  className="w-full min-h-11 flex items-center justify-between p-4 bg-white/40 border-b border-white/50 hover:bg-white/60 transition-colors active:bg-white/80"
                 >
                   <div className="flex items-center space-x-3">
                     <div className="bg-white/80 p-2 rounded-xl shadow-sm border border-white/60 backdrop-blur-sm">
                       <Calendar className="w-4 h-4 text-brand-blue" />
                     </div>
                     <div className="text-left">
-                      <h3 className="text-sm font-extrabold text-brand-dark tracking-tight">{date}</h3>
-                      <p className="text-xs font-bold text-brand-muted mt-0.5">총 {records.length}건 기록</p>
+                      <h3 className="text-sm font-extrabold text-brand-dark tracking-tight tnum text-selectable">{date}</h3>
+                      <p className="text-xs font-bold text-brand-muted mt-0.5 tnum">총 {records.length}건 기록</p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-3 text-brand-muted">
-                    <span className="text-xs font-black text-brand-blue bg-white/80 px-2.5 py-1 rounded-lg border border-white shadow-sm backdrop-blur-sm">합계 {dailyTotal}명</span>
+                    <span className="text-xs font-black text-brand-blue bg-white/80 px-2.5 py-1 rounded-lg border border-white shadow-sm backdrop-blur-sm tnum text-selectable">합계 {dailyTotal}명</span>
                     {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                   </div>
                 </button>
@@ -151,9 +161,9 @@ export default function HistoryPage() {
                       
                       return (
                         <div key={record.id} className="p-5 hover:bg-white/40 transition-colors">
-                          <div className="flex justify-between items-start mb-4">
-                            <div>
-                              <div className="flex items-center space-x-2 mb-1.5">
+                          <div className="flex justify-between items-start gap-3 mb-4">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2 mb-1.5">
                                 <span className={cn(
                                   "text-xs font-bold px-2.5 py-1 rounded-md border shadow-sm",
                                   (record as any).program === '스낵헌터' 
@@ -172,36 +182,28 @@ export default function HistoryPage() {
                                 )}>
                                   {record.type === 'autonomous' ? '자율관람' : '예약관람'}
                                 </span>
-                                <span className="text-xs font-bold text-brand-dark bg-white/60 px-2 py-1 rounded-md border border-white/50 shadow-sm">{record.session}</span>
+                                <span className="text-xs font-bold text-brand-dark bg-white/60 px-2 py-1 rounded-md border border-white/50 shadow-sm tnum">{record.session}</span>
                               </div>
                             </div>
-                            <div className="text-right bg-white/50 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/60 shadow-sm">
-                              <div className="text-sm font-black text-brand-dark tracking-tight">총 {total}명</div>
-                              <div className="text-xs font-bold text-brand-muted mt-0.5">남 {maleTotal} / 여 {femaleTotal}</div>
+                            <div className="text-right shrink-0 bg-white/50 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/60 shadow-sm">
+                              <div className="text-sm font-black text-brand-dark tracking-tight whitespace-nowrap tnum text-selectable">총 {total}명</div>
+                              <div className="text-2xs font-bold text-brand-muted mt-0.5 whitespace-nowrap tnum text-selectable">남 {maleTotal} / 여 {femaleTotal}</div>
                             </div>
                           </div>
                           
-                          <div className="grid grid-cols-4 gap-2 mb-2">
-                            <div className="bg-white/50 border border-white/60 rounded-xl p-2 text-center shadow-sm backdrop-blur-sm">
-                              <div className="text-xs font-bold text-brand-muted mb-0.5">성인</div>
-                              <div className="text-base font-black text-brand-dark tracking-tighter">{safeCounts.adult_m + safeCounts.adult_f}</div>
-                              <div className="text-[11px] font-bold text-brand-muted/70 mt-0.5">남{safeCounts.adult_m}/여{safeCounts.adult_f}</div>
-                            </div>
-                            <div className="bg-white/50 border border-white/60 rounded-xl p-2 text-center shadow-sm backdrop-blur-sm">
-                              <div className="text-xs font-bold text-brand-muted mb-0.5">청소년</div>
-                              <div className="text-base font-black text-brand-dark tracking-tighter">{safeCounts.youth_m + safeCounts.youth_f}</div>
-                              <div className="text-[11px] font-bold text-brand-muted/70 mt-0.5">남{safeCounts.youth_m}/여{safeCounts.youth_f}</div>
-                            </div>
-                            <div className="bg-white/50 border border-white/60 rounded-xl p-2 text-center shadow-sm backdrop-blur-sm">
-                              <div className="text-xs font-bold text-brand-muted mb-0.5">어린이</div>
-                              <div className="text-base font-black text-brand-dark tracking-tighter">{safeCounts.child_m + safeCounts.child_f}</div>
-                              <div className="text-[11px] font-bold text-brand-muted/70 mt-0.5">남{safeCounts.child_m}/여{safeCounts.child_f}</div>
-                            </div>
-                            <div className="bg-white/50 border border-white/60 rounded-xl p-2 text-center shadow-sm backdrop-blur-sm">
-                              <div className="text-xs font-bold text-brand-muted mb-0.5">유아</div>
-                              <div className="text-base font-black text-brand-dark tracking-tighter">{safeCounts.infant_m + safeCounts.infant_f}</div>
-                              <div className="text-[11px] font-bold text-brand-muted/70 mt-0.5">남{safeCounts.infant_m}/여{safeCounts.infant_f}</div>
-                            </div>
+                          <div className="grid grid-cols-4 gap-1.5 sm:gap-2 mb-2">
+                            {([
+                              { label: '성인', m: safeCounts.adult_m, f: safeCounts.adult_f },
+                              { label: '청소년', m: safeCounts.youth_m, f: safeCounts.youth_f },
+                              { label: '어린이', m: safeCounts.child_m, f: safeCounts.child_f },
+                              { label: '유아', m: safeCounts.infant_m, f: safeCounts.infant_f },
+                            ]).map(group => (
+                              <div key={group.label} className="bg-white/50 border border-white/60 rounded-xl px-1 py-2 sm:p-2 text-center shadow-sm backdrop-blur-sm overflow-hidden">
+                                <div className="text-2xs sm:text-xs font-bold text-brand-muted mb-0.5 whitespace-nowrap">{group.label}</div>
+                                <div className="text-base font-black text-brand-dark tracking-tight tnum text-selectable">{group.m + group.f}</div>
+                                <div className="text-3xs sm:text-2xs font-bold text-brand-muted mt-0.5 whitespace-nowrap tnum text-selectable">남{group.m}/여{group.f}</div>
+                              </div>
+                            ))}
                           </div>
 
                           {record.memo && (
