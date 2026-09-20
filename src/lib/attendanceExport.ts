@@ -73,6 +73,11 @@ export const buildAttendanceWorkbook = async (
     throw new Error('출석부 양식을 여는 데 실패했습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.');
   }
 
+  // 양식 파일에 남아 있을 수 있는 작성자 정보가 배포되는 출석부마다 따라가지 않도록 고정한다
+  workbook.creator = '서울로봇인공지능과학관';
+  workbook.lastModifiedBy = '서울로봇인공지능과학관';
+  workbook.lastPrinted = undefined;
+
   const sheet = workbook.worksheets[0];
   if (!sheet) throw new Error('출석부 양식에 시트가 없습니다.');
   sheet.name = group.programShortName;

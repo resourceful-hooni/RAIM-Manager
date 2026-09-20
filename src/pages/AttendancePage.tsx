@@ -83,30 +83,43 @@ export default function AttendancePage() {
     try {
       setIsProcessing(true);
       const parsed: ReservationGroup[] = [];
+      const failures: { fileName: string; message: string }[] = [];
+
+      // 파일 하나가 잘못돼도 나머지 파일은 살린다
       for (const file of files) {
-        const buffer = await file.arrayBuffer();
-        parsed.push(...parseReservationWorkbook(buffer));
+        try {
+          const buffer = await file.arrayBuffer();
+          parsed.push(...parseReservationWorkbook(buffer));
+        } catch (error) {
+          // 오류 메시지에 예약자 정보가 섞이지 않도록 안내 문구만 모은다
+          failures.push({
+            fileName: file.name,
+            message:
+              error instanceof ReservationParseError
+                ? error.message
+                : '엑셀 파일을 읽는 중 오류가 발생했습니다.',
+          });
+        }
       }
 
-      // 같은 회차를 다시 올리면 최신 파일 기준으로 대체한다
-      const merged = new Map<string, ReservationGroup>();
-      [...rawGroups, ...parsed].forEach((group) => merged.set(group.id, group));
-      setRawGroups(
-        Array.from(merged.values()).sort(
-          (a, b) =>
-            a.useDate.localeCompare(b.useDate) ||
-            a.timeRange.localeCompare(b.timeRange) ||
-            a.programName.localeCompare(b.programName),
-        ),
-      );
-      toast.success(`${parsed.length}개 회차를 불러왔습니다.`);
-    } catch (error) {
-      // 오류 메시지에 예약자 정보가 섞이지 않도록 안내 문구만 노출한다
-      toast.error(
-        error instanceof ReservationParseError
-          ? error.message
-          : '엑셀 파일을 읽는 중 오류가 발생했습니다. 파일 형식을 확인해 주세요.',
-      );
+      if (parsed.length > 0) {
+        // 같은 회차를 다시 올리면 최신 파일 기준으로 대체한다
+        const merged = new Map<string, ReservationGroup>();
+        [...rawGroups, ...parsed].forEach((group) => merged.set(group.id, group));
+        setRawGroups(
+          Array.from(merged.values()).sort(
+            (a, b) =>
+              a.useDate.localeCompare(b.useDate) ||
+              a.timeRange.localeCompare(b.timeRange) ||
+              a.programName.localeCompare(b.programName),
+          ),
+        );
+        toast.success(`${parsed.length}개 회차를 불러왔습니다.`);
+      }
+
+      failures.forEach(({ fileName, message }) => {
+        toast.error(`${fileName}: ${message}`);
+      });
     } finally {
       setIsProcessing(false);
       event.target.value = '';

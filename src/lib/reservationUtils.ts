@@ -95,7 +95,11 @@ export const stripAgePrefix = (sessionLabel: string): string =>
 /** "라임북스 : 움직이는 동화책" → "라임북스" (파일명·시트명용) */
 export const toShortProgramName = (programName: string): string => {
   const head = programName.split(':')[0].trim();
-  const safe = (head || programName).replace(/[\\/?*[\]]/g, ' ').trim();
+  // 엑셀 시트명에 못 쓰는 문자와, 인쇄영역 정의를 깨뜨리는 작은따옴표까지 지운다
+  const safe = (head || programName)
+    .replace(/['\\/?*:[\]]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   // 엑셀 시트명은 31자 제한
   return safe.slice(0, 31) || '프로그램';
 };
@@ -247,7 +251,8 @@ export const parseReservationWorkbook = (data: ArrayBuffer): ReservationGroup[] 
 
     const useDate = parseUseDate(at(row, col.useDate));
     const programName = stripAgePrefix(sessionLabel);
-    const id = `${useDate}__${sessionLabel}`;
+    // 같은 날 같은 프로그램이라도 회차 시간이 다르면 별도 출석부로 나눈다
+    const id = `${useDate}__${cellText(at(row, col.timeRange))}__${sessionLabel}`;
 
     let group = groups.get(id);
     if (!group) {
@@ -307,8 +312,14 @@ export const buildSmsList = (entries: ReservationEntry[]): { phone: string; name
 };
 
 /** 화면 표시용 번호 가리기 (010-1234-5678 → 010-****-5678) */
-export const maskPhone = (phone: string): string =>
-  phone.replace(/^(\d{2,3})-?(\d{3,4})-?(\d{4})$/, (_, head, _mid, tail) => `${head}-****-${tail}`);
+export const maskPhone = (phone: string): string => {
+  const matched = phone.match(/^(\d{2,3})-?(\d{3,4})-?(\d{4})$/);
+  if (matched) return `${matched[1]}-****-${matched[3]}`;
+  // 형식이 다른 번호도 화면에 그대로 드러내지 않는다 (뒤 4자리만 남김)
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length >= 4) return `****-${digits.slice(-4)}`;
+  return phone ? '****' : phone;
+};
 
 /** 화면 표시용 이름 가리기 (홍길동 → 홍*동, 김철 → 김*) */
 export const maskName = (name: string): string => {
