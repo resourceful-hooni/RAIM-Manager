@@ -1,4 +1,4 @@
-import { useMemo, useState, type ChangeEvent } from 'react';
+import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import { toast } from 'sonner';
 import {
   ClipboardList,
@@ -27,6 +27,7 @@ import {
 } from '@/lib/reservationUtils';
 import { CsvEncoding, attendanceFileName, smsFileName } from '@/lib/attendanceExport';
 import { downloadAttendanceXlsx, downloadSmsCsv } from '@/lib/attendanceDownload';
+import { collectDroppedFiles, expandToWorkbooks } from '@/lib/fileDropUtils';
 
 /**
  * 예약현황조회(.xlsx) → 출석부(.xlsx) + 문자발송 명단(.csv) 변환 페이지.
@@ -80,6 +81,7 @@ export default function AttendancePage() {
   const [csvEncoding, setCsvEncoding] = useState<CsvEncoding>('cp949');
   const [showPersonalData, setShowPersonalData] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const groups = useMemo(
     () => rawGroups.map((group) => resolveGroup(group, { includeCancelled, sortOrder })),
@@ -88,29 +90,33 @@ export default function AttendancePage() {
 
   const totalEntries = groups.reduce((sum, group) => sum + group.entries.length, 0);
 
-  const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
-    const fileList = event.target.files;
-    const files: File[] = [];
-    for (let index = 0; index < (fileList?.length ?? 0); index += 1) {
-      const file = fileList?.item(index);
-      if (file) files.push(file);
-    }
+  /**
+   * 파일 선택·드래그앤드롭 공통 처리.
+   * 폴더나 ZIP을 받으면 안에 든 엑셀까지 꺼내서 한 번에 변환한다.
+   */
+  const ingestFiles = async (files: File[]) => {
     if (files.length === 0) return;
 
     try {
       setIsProcessing(true);
+      const { workbooks, skipped } = await expandToWorkbooks(files);
+
+      if (workbooks.length === 0) {
+        toast.error('엑셀 파일을 찾지 못했습니다. 예약현황조회 .xlsx 파일이나 그 파일이 든 폴더·ZIP을 올려 주세요.');
+        return;
+      }
+
       const parsed: ReservationGroup[] = [];
       const failures: { fileName: string; message: string }[] = [];
 
       // 파일 하나가 잘못돼도 나머지 파일은 살린다
-      for (const file of files) {
+      for (const workbook of workbooks) {
         try {
-          const buffer = await file.arrayBuffer();
-          parsed.push(...parseReservationWorkbook(buffer));
+          parsed.push(...parseReservationWorkbook(workbook.buffer));
         } catch (error) {
           // 오류 메시지에 예약자 정보가 섞이지 않도록 안내 문구만 모은다
           failures.push({
-            fileName: file.name,
+            fileName: workbook.name,
             message:
               error instanceof ReservationParseError
                 ? error.message
@@ -137,10 +143,58 @@ export default function AttendancePage() {
       failures.forEach(({ fileName, message }) => {
         toast.error(`${fileName}: ${message}`);
       });
+
+      if (skipped.length > 0) {
+        toast.warning(`엑셀이 아니어서 건너뛴 파일 ${skipped.length}개가 있습니다.`);
+      }
     } finally {
       setIsProcessing(false);
-      event.target.value = '';
     }
+  };
+
+  const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const fileList = event.target.files;
+    const files: File[] = [];
+    for (let index = 0; index < (fileList?.length ?? 0); index += 1) {
+      const file = fileList?.item(index);
+      if (file) files.push(file);
+    }
+    await ingestFiles(files);
+    event.target.value = '';
+  };
+
+  // 드래그가 자식 요소를 지날 때마다 leave가 발생해, 깊이를 세어 깜빡임을 막는다
+  const dragDepth = useRef(0);
+
+  const hasFiles = (event: DragEvent) => Array.from(event.dataTransfer?.types ?? []).includes('Files');
+
+  const handleDragEnter = (event: DragEvent<HTMLDivElement>) => {
+    if (!hasFiles(event)) return;
+    event.preventDefault();
+    dragDepth.current += 1;
+    setIsDragging(true);
+  };
+
+  const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
+    if (!hasFiles(event)) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+  };
+
+  const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    if (!hasFiles(event)) return;
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setIsDragging(false);
+  };
+
+  const handleDrop = async (event: DragEvent<HTMLDivElement>) => {
+    if (!hasFiles(event)) return;
+    event.preventDefault();
+    dragDepth.current = 0;
+    setIsDragging(false);
+    if (isProcessing || !event.dataTransfer) return;
+    const files = await collectDroppedFiles(event.dataTransfer);
+    await ingestFiles(files);
   };
 
   const handleDownloadAttendance = async (group: ReservationGroup) => {
@@ -237,18 +291,30 @@ export default function AttendancePage() {
   };
 
   return (
-    <div className="p-3 sm:p-4 space-y-4 sm:space-y-6 max-w-4xl mx-auto w-full">
+    <div
+      className="p-3 sm:p-4 space-y-4 sm:space-y-6 max-w-4xl mx-auto w-full"
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <h2 className="text-xl font-extrabold mb-6 text-brand-dark tracking-tight ml-1">출석부 변환 (Attendance)</h2>
 
-      {/* 업로드 */}
-      <div className={CARD}>
+      {/* 업로드 (페이지 어디에 놓아도 받지만, 이 카드에서 상태를 보여 준다) */}
+      <div
+        className={cn(
+          CARD,
+          'transition-colors',
+          isDragging && 'border-brand-blue/70 bg-brand-blue/5 outline-2 outline-dashed outline-brand-blue/50 outline-offset-4',
+        )}
+      >
         <h3 className={CARD_HEADING}>
           <Upload className="w-5 h-5 mr-2 text-emerald-600" />
           예약현황조회 업로드
         </h3>
         <p className={CARD_DESC}>
           예약 시스템에서 내려받은 <strong>예약현황조회(.xlsx)</strong> 파일을 올리면 회차별 출석부와 문자발송 명단을 만들어 드립니다.
-          여러 프로그램 파일을 한 번에 올릴 수 있습니다.
+          여러 프로그램 파일을 한 번에 올릴 수 있고, <strong>파일·폴더·ZIP을 이 화면에 끌어다 놓아도</strong> 됩니다.
         </p>
 
         {/* 파일 입력은 sr-only로 숨긴다 — hidden이면 키보드 포커스를 받지 못한다 */}
@@ -262,10 +328,10 @@ export default function AttendancePage() {
           )}
         >
           <Upload className="w-4 h-4" />
-          <span>{isProcessing ? '처리 중...' : '예약현황조회 파일 선택'}</span>
+          <span>{isProcessing ? '처리 중...' : isDragging ? '여기에 놓으세요' : '예약현황조회 파일 선택'}</span>
           <input
             type="file"
-            accept=".xlsx,.xls"
+            accept=".xlsx,.xls,.zip"
             multiple
             onChange={handleUpload}
             disabled={isProcessing}
