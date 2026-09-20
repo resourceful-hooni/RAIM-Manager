@@ -4,16 +4,7 @@ import { format } from 'date-fns';
 import { VisitorRecord } from '@/store/useStore';
 import { saveAs } from 'file-saver';
 import { EXCEL_TEMPLATE_BASE64 } from './excelTemplateBase64';
-
-function base64ToArrayBuffer(base64: string): ArrayBuffer {
-  const binaryString = atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes.buffer;
-}
+import { base64ToArrayBuffer } from './utils';
 
 export interface DiagnosticReport {
   url: string;

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   BookOpen, KeyRound, LayoutGrid, Users, Zap, BarChart2, 
   FileSpreadsheet, Sparkles, CheckCircle, Smartphone, Info, 
-  ShieldAlert, ArrowRight, RefreshCw, Clock, Bot, Check, ShieldCheck, Settings
+  ShieldAlert, ArrowRight, RefreshCw, Clock, Bot, Check, ShieldCheck, Settings, ClipboardList
 } from 'lucide-react';
 
 type TabId = 'login' | 'layout' | 'counter' | 'smart' | 'dashboard' | 'excel';
@@ -153,6 +153,7 @@ export default function UserManual() {
                   <div className="text-brand-dark flex flex-col items-center"><Smartphone className="w-3.5 h-3.5 text-brand-blue" /><span>카운터</span></div>
                   <div className="flex flex-col items-center"><BarChart2 className="w-3.5 h-3.5" /><span>대시보드</span></div>
                   <div className="flex flex-col items-center"><Clock className="w-3.5 h-3.5" /><span>기록</span></div>
+                  <div className="flex flex-col items-center"><ClipboardList className="w-3.5 h-3.5" /><span>출석부</span></div>
                   <div className="flex flex-col items-center"><Settings className="w-3.5 h-3.5" /><span>설정</span></div>
                 </div>
               </div>

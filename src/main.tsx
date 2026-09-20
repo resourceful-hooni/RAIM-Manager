@@ -16,6 +16,7 @@ import Layout from './components/Layout';
 import CounterPage from './pages/CounterPage';
 import DashboardPage from './pages/DashboardPage';
 import HistoryPage from './pages/HistoryPage';
+import AttendancePage from './pages/AttendancePage';
 import SettingsPage from './pages/SettingsPage';
 import { AuthProvider } from './components/AuthProvider';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -53,6 +54,7 @@ createRoot(document.getElementById('root')!).render(
               <Route index element={<CounterPage />} />
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="history" element={<HistoryPage />} />
+              <Route path="attendance" element={<AttendancePage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
           </Routes>
