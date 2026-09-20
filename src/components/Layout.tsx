@@ -184,11 +184,11 @@ export default function Layout() {
     return (
       <div className="flex flex-col items-center justify-center h-[100dvh] bg-transparent p-4">
         <div className="bg-white/50 backdrop-blur-[24px] p-10 rounded-[2rem] shadow-[0_8px_32px_rgba(0,0,0,0.1)] border border-white/80 max-w-sm w-full text-center relative overflow-hidden">
-          <div className="w-20 h-20 mx-auto mb-6 bg-white/60 backdrop-blur-md text-brand-dark rounded-2xl flex items-center justify-center border border-white/80 shadow-md overflow-hidden transform rotate-3">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-[1.25rem] overflow-hidden shadow-lg ring-1 ring-white/70 bg-brand-dark flex items-center justify-center text-white">
             {!logoError ? (
-              <img src="/raim_logo.png" alt="RAIM Logo" className="w-full h-full object-contain p-2 transform -rotate-3" referrerPolicy="no-referrer" onError={() => setLogoError(true)} />
+              <img src="/app-icon.svg" alt="" aria-hidden="true" className="w-full h-full" onError={() => setLogoError(true)} />
             ) : (
-              <Bot className="w-10 h-10 transform -rotate-3" />
+              <Bot className="w-10 h-10" />
             )}
           </div>
           <h1 className="text-2xl font-extrabold text-brand-black mb-2 tracking-tight">RAIM 방문자 관리</h1>
@@ -345,9 +345,9 @@ export default function Layout() {
       <header className="flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)_+_0.875rem)] pb-3.5 bg-white/60 backdrop-blur-[20px] border-b border-white/80 z-10 sticky top-0 shadow-sm">
         <div className="flex items-center space-x-2">
           <NavLink to="/" onClick={handleLogoClick} className="flex items-center space-x-3 hover:opacity-85 transition-opacity group">
-            <div className="w-9 h-9 bg-white/60 backdrop-blur-sm text-brand-dark rounded-xl flex items-center justify-center border border-white/80 shadow-sm overflow-hidden shrink-0 group-hover:shadow-md transition-all">
+            <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 shadow-sm ring-1 ring-white/70 group-hover:shadow-md transition-all bg-brand-dark flex items-center justify-center text-white">
               {!logoError ? (
-                <img src="/raim_logo.png" alt="RAIM Logo" className="w-full h-full object-contain p-1" referrerPolicy="no-referrer" onError={() => setLogoError(true)} />
+                <img src="/app-icon.svg" alt="" aria-hidden="true" className="w-full h-full" onError={() => setLogoError(true)} />
               ) : (
                 <Bot className="w-5 h-5" />
               )}

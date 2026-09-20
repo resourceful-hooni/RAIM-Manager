@@ -13,7 +13,7 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['pop.svg', 'raim_logo.png', 'logo_wa.png', 'footer_raim_logo.png'],
+        includeAssets: ['pop.svg', 'raim_logo.png', 'logo_wa.png', 'footer_logo.png', 'app-icon.svg', 'favicon32.png', 'apple-touch-icon.png'],
         workbox: {
           globIgnores: ['**/*.xlsx', '**/sheets/**/*'],
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
@@ -22,17 +22,16 @@ export default defineConfig(({mode}) => {
           navigateFallbackDenylist: [/\.xlsx$/, /^\/sheets/, /^\/api/]
         },
         manifest: {
-          name: '방문객 카운터',
-          short_name: '카운터',
-          description: '실시간 방문객 카운팅 및 통계 대시보드',
-          theme_color: '#ffffff',
+          name: 'RAIM 방문자 카운터',
+          short_name: 'RAIM 카운터',
+          description: '서울로봇인공지능과학관 실시간 방문객 카운팅 및 통계 대시보드',
+          lang: 'ko',
+          background_color: '#f8fafc',
+          theme_color: '#00448B',
           icons: [
-            {
-              src: '/raim_logo.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'any maskable'
-            }
+            { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+            { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+            { src: '/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
           ]
         }
       })

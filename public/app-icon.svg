@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="RAIM 방문자 카운터">
+  <title>RAIM 방문자 카운터</title>
+  <!--
+    앱 전용 아이콘. 과학관 공식 로고(raim_logo.png)와 별개로,
+    16px 파비콘에서도 형태가 살아남도록 단순한 로봇 얼굴 실루엣으로 그렸다.
+    색은 src/index.css 의 브랜드 토큰(brand-cyan #1FBDC6 / brand-blue #276FB7 / brand-dark #00448B)을 따른다.
+  -->
+  <defs>
+    <linearGradient id="raimBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1FBDC6" />
+      <stop offset="55%" stop-color="#276FB7" />
+      <stop offset="100%" stop-color="#00448B" />
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="116" fill="url(#raimBg)" />
+
+  <!-- 안테나 -->
+  <rect x="246" y="118" width="20" height="46" rx="10" fill="#FFFFFF" />
+  <circle cx="256" cy="106" r="26" fill="#FFFFFF" />
+
+  <!-- 머리 + 눈/입(배경이 비치도록 구멍으로 처리) -->
+  <path
+    fill="#FFFFFF"
+    fill-rule="evenodd"
+    d="M168 160h176a56 56 0 0 1 56 56v144a56 56 0 0 1-56 56H168a56 56 0 0 1-56-56V216a56 56 0 0 1 56-56Zm36 92a30 30 0 1 0 0 60 30 30 0 0 0 0-60Zm104 0a30 30 0 1 0 0 60 30 30 0 0 0 0-60ZM200 340h112a16 16 0 0 1 0 32H200a16 16 0 0 1 0-32Z"
+  />
+
+  <!-- 귀(측면 디테일) -->
+  <rect x="84" y="248" width="26" height="80" rx="13" fill="#FFFFFF" opacity="0.85" />
+  <rect x="402" y="248" width="26" height="80" rx="13" fill="#FFFFFF" opacity="0.85" />
+</svg>
