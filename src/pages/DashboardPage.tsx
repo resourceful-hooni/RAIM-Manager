@@ -16,6 +16,29 @@ const PIE_COLORS = ['#3b82f6', '#f43f5e'];
    PNG/PDF 내보내기에서도 안전하도록 CSS 변수 대신 리터럴로 둔다. */
 const AXIS_COLOR = '#3D7099';
 
+/**
+ * 차트 툴팁 공통 설정.
+ * 배경이 반투명(0.9)이라 뒤에 있는 범례 글자가 비쳐 겹쳐 보이는 문제가 있어 불투명으로 바꿨다.
+ * 상세(연령+성별) 모드는 항목이 8개라 툴팁이 차트 박스를 넘어가므로,
+ * 범례 위로 올라오도록 z를 올리고 위쪽으로 넘칠 수 있게 허용한다.
+ */
+const TOOLTIP_PROPS = {
+  allowEscapeViewBox: { x: false, y: true },
+  wrapperStyle: { zIndex: 50, outline: 'none' },
+  contentStyle: {
+    backgroundColor: '#FFFFFF',
+    border: '1px solid rgba(61,112,153,0.25)',
+    borderRadius: '12px',
+    color: '#000000',
+    boxShadow: '0 12px 32px 0 rgba(0, 68, 139, 0.18)',
+    padding: '8px 10px',
+    fontSize: '12px',
+    lineHeight: 1.45,
+  },
+  itemStyle: { color: '#00448B', fontWeight: 'bold', padding: '1px 0' },
+  labelStyle: { fontWeight: 900, marginBottom: '4px', color: '#00448B' },
+} as const;
+
 /* 활성 세그먼트 공통 표현. HistoryPage의 프로그램 필터와 동일하게 맞춘다. */
 const SEGMENT_ACTIVE = "bg-white/80 text-brand-blue border-white shadow-sm";
 const SEGMENT_INACTIVE = "bg-transparent text-brand-muted border-transparent hover:text-brand-dark hover:bg-white/50";
@@ -814,10 +837,7 @@ export default function DashboardPage() {
                       <Cell key={`cell-${index}`} fill={pieData[0].value === 0 && pieData[1].value === 0 ? '#e2e8f0' : PIE_COLORS[index % PIE_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)', borderColor: 'rgba(255,255,255,0.5)', borderRadius: '12px', color: '#000000', boxShadow: '0 8px 32px 0 rgba(0, 68, 139, 0.1)' }}
-                    itemStyle={{ color: '#00448B', fontWeight: 'bold' }}
-                  />
+                  <Tooltip {...TOOLTIP_PROPS} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -952,7 +972,10 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div id="comprehensive-chart" className="h-[260px] w-full tnum">
+        <div
+          id="comprehensive-chart"
+          className={cn('w-full tnum', chartDisplayMode === 'detailed' ? 'h-[320px] sm:h-[360px]' : 'h-[260px]')}
+        >
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               {viewMode === 'daily' ? (
@@ -960,12 +983,7 @@ export default function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.4)" vertical={false} />
                   <XAxis dataKey="name" stroke={AXIS_COLOR} fontSize={11} tickLine={false} axisLine={false} fontWeight="bold" />
                   <YAxis stroke={AXIS_COLOR} fontSize={11} tickLine={false} axisLine={false} fontWeight="bold" />
-                  <Tooltip 
-                    cursor={{ fill: 'rgba(255,255,255,0.3)' }}
-                    contentStyle={{ backgroundColor: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)', borderColor: 'rgba(255,255,255,0.5)', borderRadius: '12px', color: '#000000', boxShadow: '0 8px 32px 0 rgba(0, 68, 139, 0.1)' }}
-                    itemStyle={{ color: '#00448B', fontWeight: 'bold' }}
-                    labelStyle={{ fontWeight: '900', marginBottom: '4px' }}
-                  />
+                  <Tooltip {...TOOLTIP_PROPS} cursor={{ fill: 'rgba(255,255,255,0.3)' }} />
                   <Legend 
                     verticalAlign="bottom"
                     content={(props) => {
@@ -1017,11 +1035,7 @@ export default function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.4)" vertical={false} />
                   <XAxis dataKey="name" stroke={AXIS_COLOR} fontSize={11} tickLine={false} axisLine={false} fontWeight="bold" />
                   <YAxis stroke={AXIS_COLOR} fontSize={11} tickLine={false} axisLine={false} fontWeight="bold" />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)', borderColor: 'rgba(255,255,255,0.5)', borderRadius: '12px', color: '#000000', boxShadow: '0 8px 32px 0 rgba(0, 68, 139, 0.1)' }}
-                    itemStyle={{ color: '#00448B', fontWeight: 'bold' }}
-                    labelStyle={{ fontWeight: '900', marginBottom: '4px' }}
-                  />
+                  <Tooltip {...TOOLTIP_PROPS} />
                   <Legend 
                     verticalAlign="bottom"
                     content={(props) => {
