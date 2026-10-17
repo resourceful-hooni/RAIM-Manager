@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import { toast } from 'sonner';
 import {
   ChevronDown,
@@ -28,7 +28,7 @@ import {
   parseReservationWorkbook,
   resolveGroup,
 } from '@/lib/reservationUtils';
-import { CsvEncoding, attendanceFileName, smsFileName, smsMessageFileName } from '@/lib/attendanceExport';
+import { CsvEncoding, XLSX_MIME, attendanceFileName, smsFileName, smsMessageFileName } from '@/lib/attendanceExport';
 import {
   downloadAttendanceXlsx,
   downloadAttendanceZip,
@@ -37,6 +37,7 @@ import {
 } from '@/lib/attendanceDownload';
 import { collectDroppedFiles, expandToWorkbooks } from '@/lib/fileDropUtils';
 import { buildSmsMessage } from '@/lib/smsMessage';
+import { connectExtensionBridge } from '@/lib/extensionBridge';
 
 /**
  * 예약현황조회(.xlsx) → 출석부(.xlsx) + 문자발송 명단(.csv) + 문자 내용(.txt) 변환 페이지.
@@ -101,11 +102,13 @@ export default function AttendancePage() {
   }, [groups]);
 
   /**
-   * 파일 선택·드래그앤드롭 공통 처리.
+   * 파일 선택·드래그앤드롭·크롬 확장 공통 처리.
    * 폴더나 ZIP을 받으면 안에 든 엑셀까지 꺼내서 한 번에 변환한다.
+   * 반환값은 파일 이름별로 읽어 낸 회차 수다 (읽지 못한 파일은 빠진다).
    */
-  const ingestFiles = async (files: File[]) => {
-    if (files.length === 0) return;
+  const ingestFiles = async (files: File[]): Promise<Map<string, number>> => {
+    const sessionsByFile = new Map<string, number>();
+    if (files.length === 0) return sessionsByFile;
 
     try {
       setIsProcessing(true);
@@ -113,16 +116,38 @@ export default function AttendancePage() {
 
       if (workbooks.length === 0) {
         toast.error('엑셀 파일을 찾지 못했습니다. 예약현황조회 .xlsx 파일이나 그 파일이 든 폴더·ZIP을 올려 주세요.');
-        return;
+        return sessionsByFile;
       }
 
       const parsed: ReservationGroup[] = [];
       const failures: { fileName: string; message: string }[] = [];
 
+      /**
+       * 한 번에 올린 파일들 사이에서 날짜·시간·회차명이 같은 회차가 나오면
+       * 명단까지 같을 때(같은 파일을 두 번 올림)는 하나로 합치고,
+       * 명단이 다를 때(회차명이 같은 다른 서비스)는 덮어쓰지 않고 따로 둔다.
+       * 비교용 키는 메모리 안에서만 쓰고 어디에도 내보내지 않는다.
+       */
+      const batchGroups = new Map<string, ReservationGroup>();
+      let separatedCount = 0;
+      const rosterKey = (group: ReservationGroup) =>
+        [...group.entries, ...group.excludedEntries]
+          .map((entry) => `${entry.phoneDigits}|${entry.appliedAt}|${entry.status}`)
+          .sort()
+          .join('\n');
+
       // 파일 하나가 잘못돼도 나머지 파일은 살린다
-      for (const workbook of workbooks) {
+      for (const [index, workbook] of workbooks.entries()) {
         try {
-          parsed.push(...parseReservationWorkbook(workbook.buffer));
+          const fileGroups = parseReservationWorkbook(workbook.buffer).map((group) => {
+            const sameId = batchGroups.get(group.id);
+            if (!sameId || rosterKey(sameId) === rosterKey(group)) return group;
+            separatedCount += 1;
+            return { ...group, id: `${group.id}__file${index}` };
+          });
+          fileGroups.forEach((group) => batchGroups.set(group.id, group));
+          parsed.push(...fileGroups);
+          sessionsByFile.set(workbook.name, fileGroups.length);
         } catch (error) {
           // 오류 메시지에 예약자 정보가 섞이지 않도록 안내 문구만 모은다
           failures.push({
@@ -136,18 +161,24 @@ export default function AttendancePage() {
       }
 
       if (parsed.length > 0) {
-        // 같은 회차를 다시 올리면 최신 파일 기준으로 대체한다
-        const merged = new Map<string, ReservationGroup>();
-        [...rawGroups, ...parsed].forEach((group) => merged.set(group.id, group));
-        setRawGroups(
-          Array.from(merged.values()).sort(
+        // 같은 회차를 다시 올리면 최신 파일 기준으로 대체한다.
+        // 확장에서 들어온 파일은 등록 시점의 함수로 처리될 수 있어, 이전 상태는 함수형 갱신으로 받는다.
+        setRawGroups((previous) => {
+          const merged = new Map<string, ReservationGroup>();
+          [...previous, ...parsed].forEach((group) => merged.set(group.id, group));
+          return Array.from(merged.values()).sort(
             (a, b) =>
               a.useDate.localeCompare(b.useDate) ||
               a.timeRange.localeCompare(b.timeRange) ||
               a.programName.localeCompare(b.programName),
-          ),
-        );
+          );
+        });
         toast.success(`${parsed.length}개 회차를 불러왔습니다.`);
+        if (separatedCount > 0) {
+          toast.warning(
+            `날짜·시간·회차명이 같은데 명단이 다른 회차 ${separatedCount}개를 따로 표시했습니다. 서로 다른 서비스일 수 있으니 확인해 주세요.`,
+          );
+        }
       }
 
       if (failures.length === 1) {
@@ -167,7 +198,31 @@ export default function AttendancePage() {
     } finally {
       setIsProcessing(false);
     }
+    return sessionsByFile;
   };
+
+  // 확장 연결은 한 번만 맺고, 호출할 때마다 최신 ingestFiles를 쓴다
+  const ingestRef = useRef(ingestFiles);
+  ingestRef.current = ingestFiles;
+
+  /**
+   * 크롬 확장(RAIM 예약현황 일괄 출력)이 공공예약 사이트에서 받은 엑셀을 넘겨주면
+   * 직접 올린 파일과 똑같이 처리한다. 확장에는 회차 수만 돌려준다.
+   */
+  useEffect(
+    () =>
+      connectExtensionBridge(async (incoming) => {
+        toast.info(`확장 프로그램에서 엑셀 ${incoming.length}개를 받았습니다.`);
+        const files = incoming.map((item) => new File([item.buffer], item.name, { type: XLSX_MIME }));
+        const sessionsByFile = await ingestRef.current(files);
+        return incoming.map((item) => ({
+          id: item.id,
+          sessions: sessionsByFile.get(item.name) ?? 0,
+          ok: sessionsByFile.has(item.name),
+        }));
+      }),
+    [],
+  );
 
   const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const fileList = event.target.files;
@@ -340,6 +395,7 @@ export default function AttendancePage() {
         <p className={CARD_DESC}>
           예약 시스템에서 내려받은 <strong>예약현황조회(.xlsx)</strong> 파일을 올리면 회차별 출석부와 문자발송 명단, 날짜를 맞춘 문자 내용을
           만들어 드립니다. 여러 프로그램 파일을 한 번에 올릴 수 있고, <strong>파일·폴더·ZIP을 이 화면에 끌어다 놓아도</strong> 됩니다.
+          크롬 확장 <strong>RAIM 예약현황 일괄 출력</strong>을 쓰면 공공예약 관리자 화면에서 고른 서비스가 이 화면으로 바로 들어옵니다.
         </p>
 
         {/* 파일 입력은 sr-only로 숨긴다 — hidden이면 키보드 포커스를 받지 못한다 */}
