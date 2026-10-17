@@ -1,0 +1,53 @@
+{
+  "manifest_version": 3,
+  "name": "RAIM 예약현황 일괄 출력",
+  "version": "1.0.0",
+  "description": "서울시 공공예약 관리자 화면에서 고른 서비스의 예약현황 엑셀을 한 번에 받아 RAIM Manager 출석부 탭으로 넘깁니다.",
+  "minimum_chrome_version": "116",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxj5R5ck9wPld+Tjke/KGClQ8e+I5nxWmzDhC1FO4QM7WpqNCdzV0PlbuknFpZxNMWe0M0Vij0/xxVT5MZ2SXACoB1xnv2a0KsWnccLU6TSk6CdveLHA8gtHrOs0nilDCi6QjmAI26QgEkh1go6ebkaa/EKVdK5RrHurTIxvxfs2cYkQ9k05iOq88Cvqdm+Bhm4fWDp/nmnk3udnjDxu+I1PUu518jypXXIYN6jRMFOYxGanBiJTfPGsBsrCfMJ81O16KJScwvNR0oxkKarqy1jA4KRDrIU66FIJy9OLZCccfKsUyIltpgSb/BiVQWqePM/FkMQAoeLiVcvvPerKqhwIDAQAB",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "permissions": [
+    "storage",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://raim.kimjihoon.me/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://yeyak.seoul.go.kr/management/reserv/selectPageListReservSvc.do*"
+      ],
+      "js": [
+        "shared.js",
+        "yeyak/api.js",
+        "yeyak/zip.js",
+        "yeyak/list.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "externally_connectable": {
+    "matches": [
+      "https://raim.kimjihoon.me/*"
+    ]
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": false
+  },
+  "action": {
+    "default_title": "RAIM 예약현황 일괄 출력 설정",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png"
+    }
+  }
+}

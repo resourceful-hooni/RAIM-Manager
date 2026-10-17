@@ -19,9 +19,9 @@ export interface ReservationEntry {
   phoneDigits: string;
   /** 인원수 */
   headcount: number;
-  /** 참여 학생 이름 */
+  /** 참여 학생 이름 (자녀가 여럿이면 ", "로 이어 붙임) */
   studentNames: string;
-  /** 참여 학생 나이 또는 학년 */
+  /** 참여 학생 나이 또는 학년 (이름과 같은 순서) */
   studentGrades: string;
   adult: number;
   youth: number;
@@ -155,6 +155,25 @@ const findColumn = (header: string[], ...candidates: string[]): number =>
     return candidates.some((candidate) => name.startsWith(candidate.replace(/\s+/g, '')));
   });
 
+/**
+ * 조건에 맞는 열을 모두 찾는다.
+ * 학생 이름·학년은 서비스마다 운영자가 정한 질문이라 열 이름이 다르고,
+ * 자녀가 여럿이면 같은 질문 열이 여러 번 반복된다 (예: 학생이름, 학생 학년, 학생이름, 학생 학년).
+ */
+const findColumns = (header: string[], ...candidates: string[]): number[] => {
+  const normalized = candidates.map((candidate) => candidate.replace(/\s+/g, ''));
+  return header.reduce<number[]>((found, cell, index) => {
+    const name = cellText(cell).replace(/\s+/g, '');
+    if (normalized.some((candidate) => name.startsWith(candidate))) found.push(index);
+    return found;
+  }, []);
+};
+
+/** 학생 이름 질문으로 쓰이는 열 이름들 */
+const STUDENT_NAME_COLUMNS = ['참여 학생 이름', '참여 학생명', '참여 학생 성명', '학생이름', '학생명', '학생 성명', '자녀 이름', '자녀명'];
+/** 학생 나이·학년 질문으로 쓰이는 열 이름들 */
+const STUDENT_GRADE_COLUMNS = ['참여 학생의 나이', '참여 학생 나이', '참여 학생 학년', '학생 학년', '학생의 학년', '학생 나이', '학생의 나이', '자녀 학년', '자녀 나이'];
+
 const REQUIRED_COLUMNS = ['신청자명', '핸드폰번호', '회차명'] as const;
 
 const sortEntries = (entries: ReservationEntry[], sortOrder: SortOrder): ReservationEntry[] =>
@@ -231,12 +250,18 @@ export const parseReservationWorkbook = (data: ArrayBuffer): ReservationGroup[] 
     child: findColumn(header, '어린이'),
     youth: findColumn(header, '청소년'),
     adult: findColumn(header, '성인'),
-    studentNames: findColumn(header, '참여 학생 이름'),
-    studentGrades: findColumn(header, '참여 학생의 나이'),
+    studentNames: findColumns(header, ...STUDENT_NAME_COLUMNS),
+    studentGrades: findColumns(header, ...STUDENT_GRADE_COLUMNS),
     appliedAt: findColumn(header, '신청일'),
   };
 
   const at = (row: unknown[], index: number): unknown => (index >= 0 ? row[index] : '');
+  /** 반복된 열의 값을 빈칸은 빼고 ", "로 잇는다 (자녀 순서는 열 순서 그대로) */
+  const joined = (row: unknown[], indices: number[]): string =>
+    indices
+      .map((index) => cellText(at(row, index)))
+      .filter(Boolean)
+      .join(', ');
 
   const groups = new Map<string, ReservationGroup>();
 
@@ -255,8 +280,8 @@ export const parseReservationWorkbook = (data: ArrayBuffer): ReservationGroup[] 
       phone: formatPhone(at(row, col.phone)),
       phoneDigits: cellText(at(row, col.phone)).replace(/\D/g, ''),
       headcount: cellNumber(at(row, col.headcount)),
-      studentNames: cellText(at(row, col.studentNames)),
-      studentGrades: cellText(at(row, col.studentGrades)),
+      studentNames: joined(row, col.studentNames),
+      studentGrades: joined(row, col.studentGrades),
       adult: cellNumber(at(row, col.adult)),
       youth: cellNumber(at(row, col.youth)),
       child: cellNumber(at(row, col.child)),

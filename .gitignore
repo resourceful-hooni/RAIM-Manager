@@ -17,3 +17,4 @@ firebase-applet-config.json
 # 설치형 에이전트 스킬(third-party). skills-lock.json 으로 재설치되므로 결과물은 추적하지 않는다
 .agents/
 .claude/skills/
+release/

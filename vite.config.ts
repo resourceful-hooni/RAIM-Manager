@@ -29,7 +29,7 @@ export default defineConfig(({mode}) => {
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
           clientsClaim: false,
           skipWaiting: false,
-          navigateFallbackDenylist: [/\.xlsx$/, /^\/sheets/, /^\/api/]
+          navigateFallbackDenylist: [/\.xlsx$/, /^\/sheets/, /^\/api/, /^\/extension-privacy/]
         },
         manifest: {
           name: 'RAIM 방문자 카운터',
