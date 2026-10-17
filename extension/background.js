@@ -204,6 +204,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // RAIM Manager 페이지에서 오는 메시지 (manifest의 externally_connectable에 적힌 주소만 보낼 수 있다)
 chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
   if (!isRaimSender(sender) || !message || message.version !== EXT.BRIDGE_VERSION) return false;
+  if (message.type === 'PING') {
+    // 출석부 화면이 확장 설치 여부를 확인할 때 (개인정보 없음)
+    sendResponse({ ok: true, version: chrome.runtime.getManifest().version });
+    return false;
+  }
   if (message.type === 'CLAIM_IMPORT') return respond(claimImport(sender), sendResponse);
   if (message.type === 'IMPORT_RESULT') {
     return respond(relayResult(message, sender).then(() => ({ ok: true })), sendResponse);

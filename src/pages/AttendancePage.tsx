@@ -37,7 +37,12 @@ import {
 } from '@/lib/attendanceDownload';
 import { collectDroppedFiles, expandToWorkbooks } from '@/lib/fileDropUtils';
 import { buildSmsMessage } from '@/lib/smsMessage';
-import { connectExtensionBridge } from '@/lib/extensionBridge';
+import {
+  RAIM_EXTENSION_STORE_URL,
+  connectExtensionBridge,
+  detectExtension,
+  type ExtensionStatus,
+} from '@/lib/extensionBridge';
 
 /**
  * 예약현황조회(.xlsx) → 출석부(.xlsx) + 문자발송 명단(.csv) + 문자 내용(.txt) 변환 페이지.
@@ -80,6 +85,8 @@ export default function AttendancePage() {
   const [showPersonalData, setShowPersonalData] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  /** 크롬 확장 연결 상태 (확인 전에는 null) */
+  const [extensionStatus, setExtensionStatus] = useState<ExtensionStatus | null>(null);
 
   const groups = useMemo(
     () => rawGroups.map((group) => resolveGroup(group, { includeCancelled, sortOrder })),
@@ -209,6 +216,16 @@ export default function AttendancePage() {
    * 크롬 확장(RAIM 예약현황 일괄 출력)이 공공예약 사이트에서 받은 엑셀을 넘겨주면
    * 직접 올린 파일과 똑같이 처리한다. 확장에는 회차 수만 돌려준다.
    */
+  useEffect(() => {
+    let cancelled = false;
+    void detectExtension().then((status) => {
+      if (!cancelled) setExtensionStatus(status);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(
     () =>
       connectExtensionBridge(async (incoming) => {
@@ -397,6 +414,26 @@ export default function AttendancePage() {
           만들어 드립니다. 여러 프로그램 파일을 한 번에 올릴 수 있고, <strong>파일·폴더·ZIP을 이 화면에 끌어다 놓아도</strong> 됩니다.
           크롬 확장 <strong>RAIM 예약현황 일괄 출력</strong>을 쓰면 공공예약 관리자 화면에서 고른 서비스가 이 화면으로 바로 들어옵니다.
         </p>
+
+        {extensionStatus?.installed && (
+          <p className="-mt-3 mb-4 text-2xs font-bold text-emerald-700">
+            ✓ 크롬 확장 연결됨{extensionStatus.version ? ` (v${extensionStatus.version})` : ''} — 공공예약 예약현황관리에서 서비스를 골라
+            보내면 이 화면으로 바로 들어옵니다.
+          </p>
+        )}
+        {extensionStatus && !extensionStatus.installed && RAIM_EXTENSION_STORE_URL && (
+          <p className="-mt-3 mb-4 text-2xs font-medium text-brand-muted">
+            크롬 확장이 아직 없습니다.{' '}
+            <a
+              href={RAIM_EXTENSION_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-bold text-brand-blue underline underline-offset-2"
+            >
+              크롬 웹스토어에서 설치하기
+            </a>
+          </p>
+        )}
 
         {/* 파일 입력은 sr-only로 숨긴다 — hidden이면 키보드 포커스를 받지 못한다 */}
         <label

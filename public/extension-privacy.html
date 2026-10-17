@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RAIM 예약현황 일괄 출력 – 개인정보처리방침</title>
+    <style>
+      :root { color-scheme: light dark; --fg: #1f2937; --muted: #6b7280; --bg: #ffffff; --line: #e5e7eb; --accent: #00448b; }
+      @media (prefers-color-scheme: dark) { :root { --fg: #e5e7eb; --muted: #9ca3af; --bg: #111827; --line: #374151; --accent: #93c5fd; } }
+      body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.7 "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif; }
+      main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
+      h1 { font-size: 1.5rem; line-height: 1.4; margin: 0 0 4px; }
+      h2 { font-size: 1.1rem; margin: 32px 0 8px; color: var(--accent); }
+      p, li { margin: 6px 0; }
+      .muted { color: var(--muted); font-size: .9rem; }
+      table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+      th, td { text-align: left; vertical-align: top; padding: 8px; border-top: 1px solid var(--line); }
+      th { width: 30%; }
+      hr { border: 0; border-top: 1px solid var(--line); margin: 40px 0; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>RAIM 예약현황 일괄 출력 개인정보처리방침</h1>
+      <p class="muted">크롬 확장 프로그램 · 시행일 2026-10-17</p>
+
+      <h2>1. 이 확장이 하는 일</h2>
+      <p>
+        서울시 공공예약 관리자 화면(예약관리 › 예약현황관리)에서 관리자가 고른 서비스의 예약현황 엑셀을 사이트의 엑셀 출력 기능과 같은 방식으로 받아,
+        같은 브라우저에 열린 RAIM Manager 출석부 화면(https://raim.kimjihoon.me)으로 넘깁니다. 출석부·문자발송 명단은 RAIM Manager가 브라우저 안에서 만듭니다.
+      </p>
+
+      <h2>2. 다루는 정보</h2>
+      <table>
+        <tr><th>예약현황 엑셀</th><td>신청자 이름, 연락처, 회차, 이용일, 신청 상태 등 공공예약 사이트가 출력하는 항목. 관리자가 이미 볼 권한이 있는 정보만 받습니다.</td></tr>
+        <tr><th>설정</th><td>기본 다운로드 사유, 요청 간격. 개인정보가 아닙니다.</td></tr>
+      </table>
+
+      <h2>3. 저장과 전송</h2>
+      <ul>
+        <li><strong>외부 전송 없음.</strong> 개발자나 제3자의 서버로 어떤 정보도 보내지 않습니다. 확장이 요청하는 곳은 공공예약 사이트(관리자 본인의 로그인 세션)뿐입니다.</li>
+        <li><strong>브라우저 안에서만 전달.</strong> 받은 엑셀은 브라우저 메모리(chrome.storage.session)에만 잠깐 두었다가, 확장이 연 RAIM Manager 출석부 화면에 1:1 채널로 한 번 넘기고 즉시 지웁니다. 5분 안에 가져가지 않으면 자동으로 지우며, 브라우저를 닫아도 사라집니다.</li>
+        <li><strong>디스크 저장 없음.</strong> 확장의 영구 저장소에는 설정만 저장합니다. 관리자가 "ZIP으로 저장"을 누른 경우에만 그 PC의 다운로드 폴더에 파일이 저장됩니다.</li>
+        <li><strong>기록 남기지 않음.</strong> 분석 도구, 광고, 로그 수집을 쓰지 않습니다.</li>
+      </ul>
+
+      <h2>4. 사이트 기록</h2>
+      <p>엑셀을 받을 때마다 공공예약 사이트에 관리자가 고른 다운로드 사유(기본 "출석부 작성")가 사이트의 엑셀 출력과 똑같이 기록됩니다.</p>
+
+      <h2>5. 권한</h2>
+      <table>
+        <tr><th>storage</th><td>설정 저장, 넘길 파일을 메모리에 잠깐 보관</td></tr>
+        <tr><th>alarms</th><td>보관한 파일을 5분 뒤 지우기</td></tr>
+        <tr><th>raim.kimjihoon.me 접근</th><td>RAIM Manager 출석부 탭을 찾아 열기</td></tr>
+        <tr><th>공공예약 관리자 화면</th><td>예약현황관리 목록에 선택 상자와 패널 표시, 엑셀 출력 요청</td></tr>
+      </table>
+
+      <h2>6. 판매·제3자 제공</h2>
+      <p>정보를 판매하거나 제3자에게 제공하지 않으며, 확장의 목적 외에 쓰지 않습니다.</p>
+
+      <h2>7. 문의</h2>
+      <p>소스 코드와 문의: <a href="https://github.com/resourceful-hooni/RAIM-Manager">github.com/resourceful-hooni/RAIM-Manager</a></p>
+
+      <hr />
+
+      <h1>Privacy Policy (English summary)</h1>
+      <p>
+        "RAIM 예약현황 일괄 출력" lets a logged-in administrator of the Seoul public reservation admin site export reservation spreadsheets for selected services
+        (the same export the site provides) and hand them to the RAIM Manager attendance page (https://raim.kimjihoon.me) open in the same browser.
+      </p>
+      <ul>
+        <li>No data is sent to the developer or any third party. The only network requests go to the reservation admin site using the administrator's own session.</li>
+        <li>Exported files are kept only in browser memory (chrome.storage.session), handed once to the RAIM Manager tab opened by the extension, and deleted immediately (or after 5 minutes).</li>
+        <li>Only settings (default download reason, request interval) are stored persistently. Files are written to disk only if the administrator clicks "ZIP으로 저장".</li>
+        <li>No analytics, advertising, or logging. Data is not sold, transferred, or used for unrelated purposes.</li>
+      </ul>
+    </main>
+  </body>
+</html>

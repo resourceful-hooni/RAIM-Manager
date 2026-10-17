@@ -19,8 +19,16 @@
 
 export const BRIDGE_VERSION = 1;
 
-/** extension/manifest.json의 key에서 나온 확장 ID (key를 바꾸면 이 값도 바꿔야 한다) */
-export const RAIM_EXTENSION_ID = 'ohjbofjcjnkidgidaclhnppmcncnfbjf';
+/**
+ * 통신을 허용할 확장 ID 목록.
+ * - 'ohjbofjc…': extension/manifest.json의 key로 고정된 개발용(압축해제 설치) ID
+ * - 크롬 웹스토어에 올리면 스토어가 새 ID를 준다. 그 ID를 여기에 추가하고,
+ *   스토어 대시보드의 공개 키를 manifest의 key로 바꾸면 개발용과 스토어용 ID가 같아진다 (extension/README.md 참고).
+ */
+export const RAIM_EXTENSION_IDS: readonly string[] = ['ohjbofjcjnkidgidaclhnppmcncnfbjf'];
+
+/** 크롬 웹스토어 설치 주소 (게시 후 채운다. 비어 있으면 화면에 설치 링크를 띄우지 않는다) */
+export const RAIM_EXTENSION_STORE_URL = '';
 
 /** 한 번에 받는 파일 수와 파일 크기 상한 (예약현황조회 엑셀은 보통 수십 KB) */
 const MAX_FILES = 50;
@@ -46,6 +54,9 @@ export interface ExtensionImportResult {
 
 type ImportHandler = (files: ExtensionImportFile[]) => Promise<ExtensionImportResult[]>;
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 interface ChromeRuntimeLike {
   sendMessage: (extensionId: string, message: unknown, callback: (response: unknown) => void) => void;
   lastError?: { message?: string };
@@ -57,7 +68,7 @@ const getRuntime = (): ChromeRuntimeLike | null => {
   return runtime && typeof runtime.sendMessage === 'function' ? runtime : null;
 };
 
-const sendToExtension = (message: Record<string, unknown>): Promise<unknown> =>
+const sendTo = (extensionId: string, message: Record<string, unknown>): Promise<unknown> =>
   new Promise((resolve) => {
     const runtime = getRuntime();
     if (!runtime) {
@@ -65,7 +76,7 @@ const sendToExtension = (message: Record<string, unknown>): Promise<unknown> =>
       return;
     }
     try {
-      runtime.sendMessage(RAIM_EXTENSION_ID, { version: BRIDGE_VERSION, ...message }, (response) => {
+      runtime.sendMessage(extensionId, { version: BRIDGE_VERSION, ...message }, (response) => {
         // 확장이 없거나 꺼져 있으면 lastError가 생긴다. 읽어 두기만 하면 브라우저가 경고를 띄우지 않는다.
         void runtime.lastError;
         resolve(response ?? null);
@@ -75,8 +86,32 @@ const sendToExtension = (message: Record<string, unknown>): Promise<unknown> =>
     }
   });
 
-const isPlainObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
+export interface ExtensionStatus {
+  installed: boolean;
+  version?: string;
+}
+
+/** 설치된 확장의 ID (목록 중 응답한 것). 찾기 전에는 null. */
+let activeExtensionId: string | null = null;
+
+/** 목록의 확장 ID에 차례로 물어 설치된 확장을 찾는다 (개인정보 없는 확인 메시지만 오간다) */
+export const detectExtension = async (): Promise<ExtensionStatus> => {
+  if (!getRuntime()) return { installed: false };
+  for (const extensionId of RAIM_EXTENSION_IDS) {
+    const response = await sendTo(extensionId, { type: 'PING' });
+    if (isPlainObject(response) && response.ok === true) {
+      activeExtensionId = extensionId;
+      return { installed: true, version: typeof response.version === 'string' ? response.version.slice(0, 20) : undefined };
+    }
+  }
+  activeExtensionId = null;
+  return { installed: false };
+};
+
+const sendToExtension = async (message: Record<string, unknown>): Promise<unknown> => {
+  if (!activeExtensionId && !(await detectExtension()).installed) return null;
+  return activeExtensionId ? sendTo(activeExtensionId, message) : null;
+};
 
 const base64ToBuffer = (base64: string): ArrayBuffer => {
   const binary = atob(base64);
