@@ -11,10 +11,12 @@
 
 3. **예약자 개인정보 취급 (출석부 변환 기능)**:
    - 예약현황조회 업로드로 들어온 **신청자 이름·휴대폰번호는 어떤 경우에도 서버에 남기지 않습니다.** Firestore 저장, `/api/*` 전송, 콘솔 출력, localStorage·IndexedDB 저장 모두 금지입니다.
-   - 관련 코드(`src/lib/reservationUtils.ts`, `attendanceExport.ts`, `attendanceDownload.ts`, `src/pages/AttendancePage.tsx`)에는 `fetch`·`@/lib/firebase`·`useStore`·`console.*`를 넣지 마십시오. 데이터는 페이지의 로컬 상태에만 두고, 오류 메시지·토스트에는 건수만 노출합니다.
+   - 관련 코드(`src/lib/reservationUtils.ts`, `attendanceExport.ts`, `attendanceDownload.ts`, `smsMessage.ts`, `src/pages/AttendancePage.tsx`)에는 `fetch`·`@/lib/firebase`·`useStore`·`console.*`를 넣지 마십시오. 데이터는 페이지의 로컬 상태에만 두고, 오류 메시지·토스트에는 건수만 노출합니다.
    - `exportUtils.ts`의 `showDiagnosticsModal`은 파일 원본 바이트를 화면과 클립보드에 노출하므로 이 기능에서 절대 재사용하지 마십시오.
    - 출석부 양식도 1번 규칙과 같은 이유로 `src/lib/attendanceTemplateBase64.ts`에 인라인되어 있습니다. 양식을 고쳤다면 `public/sheets/출석부양식.xlsx`를 수정한 뒤 `node scripts/generate-attendance-template.mjs`로 다시 생성하십시오. (서비스 워커가 이진 xlsx를 손상시키는 문제 때문에 `fetch` 방식으로 되돌리면 안 됩니다.)
    - 문자발송 CSV는 문자발송 프로그램 규격에 맞춰 **CP949 인코딩·CRLF·헤더 없음**을 유지해야 합니다. UTF-8 BOM을 넣으면 안 됩니다.
+   - 문자 내용(.txt)은 `src/lib/smsMessage.ts`의 프로그램별 양식에서 **날짜만** 이용일로 바꿔 만듭니다(예: `10월 18일(일)`). 시간·장소·안내 문구는 양식 그대로 고정이고, 받은 양식 파일과 같은 **UTF-8(BOM 없음)·LF**로 저장합니다. 프로그램이 바뀌면 `SMS_MESSAGE_TEMPLATES`를 고치십시오.
+   - '전체 ZIP으로 내려받기'는 모든 회차의 출석부·문자발송 명단·문자 내용을 ZIP 하나로 묶습니다. ZIP 안의 출석부와 CSV는 회차별 버튼과 같은 함수(`buildAttendanceFile`·`buildSmsCsvFile`)로 만들어 내용이 달라지지 않게 하십시오.
    - `public/sheets/출석부양식.xlsx`는 **엑셀이나 ExcelJS로만 편집**하십시오. openpyxl(파이썬)로 저장한 양식을 쓰면 그 양식으로 만든 출석부를 엑셀이 복구하려 듭니다. 양식을 고친 뒤에는 반드시 실제 엑셀에서 결과물을 열어 확인하십시오.
 
 4. **GitHub Push 및 배포 규칙**:

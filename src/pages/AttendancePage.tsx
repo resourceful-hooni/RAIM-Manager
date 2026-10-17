@@ -1,14 +1,17 @@
 import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import { toast } from 'sonner';
 import {
+  ChevronDown,
   ClipboardList,
-  Download,
   Eye,
   EyeOff,
+  FileArchive,
   FileSpreadsheet,
+  FileText,
   MessageSquare,
   ShieldCheck,
   Trash2,
+  TriangleAlert,
   Upload,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -25,12 +28,18 @@ import {
   parseReservationWorkbook,
   resolveGroup,
 } from '@/lib/reservationUtils';
-import { CsvEncoding, attendanceFileName, smsFileName } from '@/lib/attendanceExport';
-import { downloadAttendanceXlsx, downloadSmsCsv } from '@/lib/attendanceDownload';
+import { CsvEncoding, attendanceFileName, smsFileName, smsMessageFileName } from '@/lib/attendanceExport';
+import {
+  downloadAttendanceXlsx,
+  downloadAttendanceZip,
+  downloadSmsCsv,
+  downloadSmsMessageTxt,
+} from '@/lib/attendanceDownload';
 import { collectDroppedFiles, expandToWorkbooks } from '@/lib/fileDropUtils';
+import { buildSmsMessage } from '@/lib/smsMessage';
 
 /**
- * 예약현황조회(.xlsx) → 출석부(.xlsx) + 문자발송 명단(.csv) 변환 페이지.
+ * 예약현황조회(.xlsx) → 출석부(.xlsx) + 문자발송 명단(.csv) + 문자 내용(.txt) 변환 페이지.
  *
  * [개인정보 보호]
  * 업로드한 파일은 브라우저 밖으로 나가지 않는다. 서버 전송·Firestore 저장·콘솔 출력이 없고,
@@ -50,18 +59,6 @@ const ACTION_BUTTON = 'flex items-center justify-center space-x-2 min-h-11 py-3 
 
 /** 태블릿 세로에서 열이 뭉개지지 않도록 표에 주는 최소 폭 (넘치면 가로 스크롤) */
 const TABLE_MIN_WIDTH = 'min-w-[38rem]';
-
-/**
- * 연속 저장 사이의 간격.
- * 브라우저는 사용자 제스처 한 번에 여러 파일이 저장되면 두 번째부터 막는 경우가 있어,
- * 저장 요청을 조금씩 떨어뜨려 차단 가능성을 낮춘다.
- */
-const SAVE_GAP_MS = 400;
-
-const wait = (ms: number) =>
-  new Promise<void>((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
 
 const SORT_OPTIONS: { value: SortOrder; label: string }[] = [
   { value: 'applied', label: '신청일 순' },
@@ -87,6 +84,9 @@ export default function AttendancePage() {
     () => rawGroups.map((group) => resolveGroup(group, { includeCancelled, sortOrder })),
     [rawGroups, includeCancelled, sortOrder],
   );
+
+  // 회차마다 양식을 골라 날짜만 바꾼 문자 내용 (신청자 정보와 무관해 옵션이 바뀌어도 같다)
+  const cards = useMemo(() => groups.map((group) => ({ group, message: buildSmsMessage(group) })), [groups]);
 
   const totalEntries = groups.reduce((sum, group) => sum + group.entries.length, 0);
 
@@ -254,52 +254,56 @@ export default function AttendancePage() {
     }
   };
 
+  const handleDownloadMessage = (group: ReservationGroup) => {
+    try {
+      if (!downloadSmsMessageTxt(group, needsTime(group))) {
+        toast.warning('이 프로그램은 문자 내용 양식이 없어 만들 수 없습니다.');
+        return;
+      }
+      toast.success('문자 내용을 내려받았습니다.');
+    } catch {
+      toast.error('문자 내용 파일을 만드는 중 오류가 발생했습니다.');
+    }
+  };
+
+  /** 여러 회차를 파일마다 따로 받지 않고 ZIP 하나로 받는다 */
   const handleDownloadAll = async () => {
     const targets = groups.filter((group) => group.entries.length > 0);
     if (targets.length === 0) {
       toast.warning('내려받을 명단이 없습니다.');
       return;
     }
-    // 파일명에는 회차 정보만 들어가고 신청자 정보는 담기지 않는다 (실패 안내에 그대로 써도 안전)
-    const tasks = targets.flatMap((group) => [
-      { fileName: attendanceFileName(group, label, needsTime(group)), run: () => downloadAttendanceXlsx(group, label) },
-      { fileName: smsFileName(group, needsTime(group)), run: () => downloadSmsCsv(group, csvEncoding) },
-    ]);
 
     try {
       setIsProcessing(true);
-      toast.info(`파일 ${tasks.length}개를 만드는 중...`);
+      toast.info(`${targets.length}개 회차를 ZIP으로 묶는 중...`);
 
-      const failedFiles: string[] = [];
-      let savedCount = 0;
+      const result = await downloadAttendanceZip(targets, { label, encoding: csvEncoding, withTime: needsTime });
 
-      for (let index = 0; index < tasks.length; index += 1) {
-        // 첫 파일은 바로, 이후에는 한 박자 쉬고 저장한다
-        if (index > 0) await wait(SAVE_GAP_MS);
-        try {
-          await tasks[index].run();
-          savedCount += 1;
-        } catch {
-          failedFiles.push(tasks[index].fileName);
-        }
-      }
-
-      if (failedFiles.length === 0) {
-        toast.success(`${targets.length}개 회차 · 파일 ${savedCount}개를 내려받았습니다.`, {
-          description:
-            tasks.length > 1
-              ? '받은 파일 수가 모자라면 브라우저가 연속 저장을 막은 것입니다. 주소창의 다운로드 차단 표시에서 허용한 뒤 회차별 버튼으로 다시 받아 주세요.'
-              : undefined,
-        });
-      } else if (savedCount > 0) {
-        toast.warning(`파일 ${savedCount}개를 내려받고 ${failedFiles.length}개는 실패했습니다.`, {
-          description: `실패: ${failedFiles.join(', ')} — 회차별 버튼으로 다시 내려받아 주세요.`,
-        });
-      } else {
-        toast.error('파일을 하나도 내려받지 못했습니다.', {
+      // 파일명에는 회차 정보만 들어가고 신청자 정보는 담기지 않는다 (안내에 그대로 써도 안전)
+      if (result.fileCount === 0) {
+        toast.error('파일을 하나도 만들지 못했습니다.', {
           description: '잠시 후 회차별 버튼으로 다시 시도해 주세요.',
         });
+        return;
       }
+      if (result.failedFiles.length === 0) {
+        toast.success(`${targets.length}개 회차 · 파일 ${result.fileCount}개를 ZIP 하나로 내려받았습니다.`, {
+          description: result.fileName,
+        });
+      } else {
+        toast.warning(`파일 ${result.fileCount}개를 ZIP으로 내려받고 ${result.failedFiles.length}개는 실패했습니다.`, {
+          description: `실패: ${result.failedFiles.join(', ')} — 회차별 버튼으로 다시 내려받아 주세요.`,
+        });
+      }
+      if (result.missingMessages.length > 0) {
+        toast.warning(`문자 내용 양식이 없어 문자내용 파일을 뺀 회차: ${result.missingMessages.join(', ')}`);
+      }
+      if (result.unsupportedCount > 0) {
+        toast.warning(`${result.unsupportedCount}건은 CP949로 표현할 수 없는 글자가 있어 ?로 바뀌었습니다.`);
+      }
+    } catch {
+      toast.error('ZIP 파일을 만드는 중 오류가 발생했습니다.');
     } finally {
       setIsProcessing(false);
     }
@@ -334,8 +338,8 @@ export default function AttendancePage() {
           예약현황조회 업로드
         </h3>
         <p className={CARD_DESC}>
-          예약 시스템에서 내려받은 <strong>예약현황조회(.xlsx)</strong> 파일을 올리면 회차별 출석부와 문자발송 명단을 만들어 드립니다.
-          여러 프로그램 파일을 한 번에 올릴 수 있고, <strong>파일·폴더·ZIP을 이 화면에 끌어다 놓아도</strong> 됩니다.
+          예약 시스템에서 내려받은 <strong>예약현황조회(.xlsx)</strong> 파일을 올리면 회차별 출석부와 문자발송 명단, 날짜를 맞춘 문자 내용을
+          만들어 드립니다. 여러 프로그램 파일을 한 번에 올릴 수 있고, <strong>파일·폴더·ZIP을 이 화면에 끌어다 놓아도</strong> 됩니다.
         </p>
 
         {/* 파일 입력은 sr-only로 숨긴다 — hidden이면 키보드 포커스를 받지 못한다 */}
@@ -470,9 +474,9 @@ export default function AttendancePage() {
                 disabled={isProcessing}
                 className={cn(ACTION_BUTTON, 'flex-1 bg-brand-dark hover:bg-brand-black text-white shadow-md')}
               >
-                <Download className="w-4 h-4" />
+                <FileArchive className="w-4 h-4" />
                 <span>
-                  전체 내려받기 (<span className="tnum">{groups.length}</span>개 회차)
+                  전체 ZIP으로 내려받기 (<span className="tnum">{groups.length}</span>개 회차)
                 </span>
               </button>
               <button
@@ -488,7 +492,7 @@ export default function AttendancePage() {
           </div>
 
           {/* 회차별 결과 */}
-          {groups.map((group) => (
+          {cards.map(({ group, message }) => (
             <div key={group.id} className={CARD}>
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-4">
                 <div>
@@ -591,6 +595,38 @@ export default function AttendancePage() {
                 </>
               )}
 
+              {/* 문자 내용: 시간·장소·문구는 양식대로 고정이고 날짜만 이용일로 바뀐다 */}
+              {message.status === 'ok' ? (
+                <details className={cn(SUB_PANEL, 'group/message mt-4 p-0')}>
+                  <summary className="flex items-center gap-1.5 min-h-11 px-4 py-2 cursor-pointer list-none rounded-2xl text-xs font-bold text-brand-dark [&::-webkit-details-marker]:hidden">
+                    <FileText className="w-4 h-4 text-indigo-700 shrink-0" />
+                    <span className="shrink-0">문자 내용 미리보기</span>
+                    <span className="text-2xs font-medium text-brand-muted truncate">
+                      {message.template.time} · {message.template.place}
+                    </span>
+                    <ChevronDown className="w-4 h-4 ml-auto text-brand-muted shrink-0 transition-transform group-open/message:rotate-180" />
+                  </summary>
+                  <p className="px-4 pb-4 whitespace-pre-wrap break-keep text-xs font-medium text-brand-dark leading-relaxed text-selectable">
+                    {message.text}
+                  </p>
+                </details>
+              ) : (
+                <p className="mt-4 text-2xs font-medium text-brand-muted leading-relaxed">
+                  {message.status === 'no-template'
+                    ? '문자 내용 양식이 없는 프로그램이라 문자내용 파일은 만들지 않습니다.'
+                    : '이용일을 읽지 못해 문자 내용을 만들 수 없습니다.'}
+                </p>
+              )}
+              {message.status === 'ok' && message.timeMismatch && (
+                <p className="mt-2 flex items-start gap-1.5 text-2xs font-bold text-amber-700 leading-relaxed">
+                  <TriangleAlert className="w-4 h-4 shrink-0" />
+                  <span>
+                    예약 시간({group.timeRange})과 문자에 들어가는 시간({message.template.time})이 다릅니다. 보내기 전에 확인해
+                    주세요.
+                  </span>
+                </p>
+              )}
+
               <div className="flex flex-col sm:flex-row gap-3 mt-5">
                 <button
                   type="button"
@@ -612,10 +648,20 @@ export default function AttendancePage() {
                     문자발송 CSV (<span className="tnum">{buildSmsList(group.entries).length}</span>건)
                   </span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadMessage(group)}
+                  disabled={isProcessing || message.status !== 'ok'}
+                  className={cn(ACTION_BUTTON, 'flex-1 bg-indigo-700 hover:bg-indigo-800 border border-indigo-800/40 text-white shadow-md')}
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>문자내용 TXT</span>
+                </button>
               </div>
 
               <p className="text-2xs font-medium text-brand-muted mt-3 leading-relaxed">
                 파일명: {attendanceFileName(group, label, needsTime(group))} · {smsFileName(group, needsTime(group))}
+                {message.status === 'ok' && ` · ${smsMessageFileName(group, needsTime(group))}`}
               </p>
             </div>
           ))}
