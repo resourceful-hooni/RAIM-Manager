@@ -6,10 +6,11 @@ import {
   buildCompositionNote,
   buildSmsList,
 } from './reservationUtils';
+import { buildSmsMessage } from './smsMessage';
 import { base64ToArrayBuffer } from './utils';
 
 /**
- * 출석부(xlsx) · 문자발송 명단(csv) 생성.
+ * 출석부(xlsx) · 문자발송 명단(csv) · 문자 내용(txt) 생성과, 여러 회차를 ZIP 하나로 묶기.
  *
  * [개인정보 보호 원칙]
  * 파일 생성은 전부 브라우저 안에서 끝난다. 서버로 보내는 요청도, 콘솔 출력도 없다.
@@ -63,6 +64,17 @@ export const attendanceFileName = (group: ReservationGroup, label: string, withT
 
 export const smsFileName = (group: ReservationGroup, withTime = false): string =>
   `${sanitizeFileName(`${group.mmdd} 문자발송_${group.programShortName}${withTime ? sessionSuffix(group) : ''}`)}.csv`;
+
+export const smsMessageFileName = (group: ReservationGroup, withTime = false): string =>
+  `${sanitizeFileName(`${group.mmdd} 문자내용_${group.programShortName}${withTime ? sessionSuffix(group) : ''}`)}.txt`;
+
+/** "1018 위크앤드.zip" (이용일이 여러 날이면 "1017-1018 위크앤드.zip") */
+export const attendanceZipFileName = (groups: ReservationGroup[], label: string): string => {
+  const days = Array.from(new Set(groups.map((group) => group.mmdd).filter(Boolean))).sort();
+  const range = days.length > 1 ? `${days[0]}-${days[days.length - 1]}` : (days[0] ?? '');
+  const name = sanitizeFileName(`${range} ${label.trim() || '출석부'}`);
+  return `${name}.zip`;
+};
 
 /**
  * 템플릿을 읽어 출석부 워크북을 만든다.
@@ -193,4 +205,126 @@ export const buildSmsCsvBytes = async (
   });
 
   return { bytes: Uint8Array.from(bytes), unsupportedCount };
+};
+
+/** 내려받을 파일 한 개 */
+export interface GeneratedFile {
+  fileName: string;
+  data: ArrayBuffer | Uint8Array;
+}
+
+/** 출석부 xlsx 파일 */
+export const buildAttendanceFile = async (
+  group: ReservationGroup,
+  label: string,
+  withTime = false,
+): Promise<GeneratedFile> => {
+  const workbook = await buildAttendanceWorkbook(group, label, undefined, withTime);
+  return { fileName: attendanceFileName(group, label, withTime), data: await workbook.xlsx.writeBuffer() };
+};
+
+/** 문자발송 csv 파일 */
+export const buildSmsCsvFile = async (
+  group: ReservationGroup,
+  encoding: CsvEncoding = 'cp949',
+  withTime = false,
+): Promise<GeneratedFile & { count: number; unsupportedCount: number }> => {
+  const list = buildSmsList(group.entries);
+  const { bytes, unsupportedCount } = await buildSmsCsvBytes(list, encoding);
+  return { fileName: smsFileName(group, withTime), data: bytes, count: list.length, unsupportedCount };
+};
+
+/**
+ * 문자 내용 txt 파일. 문자 양식이 없거나 이용일을 읽지 못하면 null.
+ * 받은 양식 파일과 같은 UTF-8(BOM 없음)·LF로 저장한다.
+ */
+export const buildSmsMessageFile = (group: ReservationGroup, withTime = false): GeneratedFile | null => {
+  const message = buildSmsMessage(group);
+  if (message.status !== 'ok') return null;
+  return { fileName: smsMessageFileName(group, withTime), data: new TextEncoder().encode(message.text) };
+};
+
+export interface AttendanceZipOptions {
+  label: string;
+  encoding: CsvEncoding;
+  /** 같은 날 같은 프로그램이 두 회차 이상이라 파일명에 시간을 붙여야 하는지 */
+  withTime: (group: ReservationGroup) => boolean;
+}
+
+export interface AttendanceZipResult {
+  fileName: string;
+  /** 담은 파일이 하나도 없으면 null */
+  bytes: Uint8Array | null;
+  fileCount: number;
+  /** 만들지 못한 파일 이름 (회차 정보만 들어 있어 안내에 그대로 써도 안전하다) */
+  failedFiles: string[];
+  /** 문자 양식이 없어 문자 내용을 빼고 담은 회차 */
+  missingMessages: string[];
+  /** CP949로 표현할 수 없는 글자가 있어 ?로 바뀐 명단 줄 수 */
+  unsupportedCount: number;
+}
+
+/** ZIP 안에서 이름이 겹치면 덮어쓰지 않도록 " (2)"를 붙인다 (윈도우는 대소문자를 구분하지 않는다) */
+const reserveZipPath = (name: string, used: Set<string>): string => {
+  const dot = name.lastIndexOf('.');
+  const stem = dot > 0 ? name.slice(0, dot) : name;
+  const ext = dot > 0 ? name.slice(dot) : '';
+  let candidate = name;
+  for (let n = 2; used.has(candidate.toLowerCase()); n += 1) candidate = `${stem} (${n})${ext}`;
+  used.add(candidate.toLowerCase());
+  return candidate;
+};
+
+/**
+ * 여러 회차의 출석부·문자발송 명단·문자 내용을 ZIP 하나로 묶는다.
+ * 브라우저가 연속 저장을 막는 문제가 없고, 파일 하나가 실패해도 나머지는 담는다.
+ */
+export const buildAttendanceZip = async (
+  groups: ReservationGroup[],
+  { label, encoding, withTime }: AttendanceZipOptions,
+): Promise<AttendanceZipResult> => {
+  // 압축 모듈은 실제로 묶을 때만 불러온다 (업로드의 ZIP 해제와 같은 청크)
+  const JSZip = (await import('jszip')).default;
+  const zip = new JSZip();
+  const used = new Set<string>();
+  const failedFiles: string[] = [];
+  const missingMessages: string[] = [];
+  let fileCount = 0;
+  let unsupportedCount = 0;
+
+  const add = (file: GeneratedFile) => {
+    zip.file(reserveZipPath(file.fileName, used), file.data);
+    fileCount += 1;
+  };
+
+  for (const group of groups) {
+    const timed = withTime(group);
+
+    try {
+      add(await buildAttendanceFile(group, label, timed));
+    } catch {
+      failedFiles.push(attendanceFileName(group, label, timed));
+    }
+
+    try {
+      const csv = await buildSmsCsvFile(group, encoding, timed);
+      add(csv);
+      unsupportedCount += csv.unsupportedCount;
+    } catch {
+      failedFiles.push(smsFileName(group, timed));
+    }
+
+    const message = buildSmsMessageFile(group, timed);
+    if (message) add(message);
+    else missingMessages.push(`${group.programShortName}${timed ? sessionSuffix(group) : ''}`);
+  }
+
+  return {
+    fileName: attendanceZipFileName(groups, label),
+    bytes: fileCount > 0 ? await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' }) : null,
+    fileCount,
+    failedFiles,
+    missingMessages,
+    unsupportedCount,
+  };
 };
