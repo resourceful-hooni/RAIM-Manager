@@ -27,6 +27,8 @@ import {
   maskPhone,
   parseReservationWorkbook,
   resolveGroup,
+  serviceNameFromFileName,
+  titleLabelFromService,
 } from '@/lib/reservationUtils';
 import { CsvEncoding, XLSX_MIME, attendanceFileName, smsFileName, smsMessageFileName } from '@/lib/attendanceExport';
 import {
@@ -78,7 +80,8 @@ const ENCODING_OPTIONS: { value: CsvEncoding; label: string }[] = [
 
 export default function AttendancePage() {
   const [rawGroups, setRawGroups] = useState<ReservationGroup[]>([]);
-  const [label, setLabel] = useState('위크앤드');
+  /** 직접 고친 제목 문구 (키는 서비스명, 직접 올린 파일은 '') */
+  const [labelEdits, setLabelEdits] = useState<Record<string, string>>({});
   const [includeCancelled, setIncludeCancelled] = useState(false);
   const [sortOrder, setSortOrder] = useState<SortOrder>('applied');
   const [csvEncoding, setCsvEncoding] = useState<CsvEncoding>('cp949');
@@ -97,6 +100,11 @@ export default function AttendancePage() {
   const cards = useMemo(() => groups.map((group) => ({ group, message: buildSmsMessage(group) })), [groups]);
 
   const totalEntries = groups.reduce((sum, group) => sum + group.entries.length, 0);
+
+  // 제목 문구는 서비스마다 따로 정한다 (위크앤드·브레인 에듀투어를 함께 받아도 섞이지 않게)
+  const services = useMemo(() => Array.from(new Set(groups.map((group) => group.serviceName))), [groups]);
+  const labelFor = (group: Pick<ReservationGroup, 'serviceName'>) =>
+    labelEdits[group.serviceName] ?? titleLabelFromService(group.serviceName);
 
   // 같은 날 같은 프로그램이 두 회차 이상이면 파일명·제목이 겹치므로 시간을 덧붙인다
   const needsTime = useMemo(() => {
@@ -146,7 +154,7 @@ export default function AttendancePage() {
       // 파일 하나가 잘못돼도 나머지 파일은 살린다
       for (const [index, workbook] of workbooks.entries()) {
         try {
-          const fileGroups = parseReservationWorkbook(workbook.buffer).map((group) => {
+          const fileGroups = parseReservationWorkbook(workbook.buffer, serviceNameFromFileName(workbook.name)).map((group) => {
             const sameId = batchGroups.get(group.id);
             if (!sameId || rosterKey(sameId) === rosterKey(group)) return group;
             separatedCount += 1;
@@ -298,7 +306,7 @@ export default function AttendancePage() {
     try {
       setIsProcessing(true);
       toast.info('파일 생성 중...');
-      await downloadAttendanceXlsx(group, label, needsTime(group));
+      await downloadAttendanceXlsx(group, labelFor(group), needsTime(group));
       toast.success(`출석부를 내려받았습니다. (${group.entries.length}건 / ${group.totalHeadcount}명)`);
     } catch {
       toast.error('출석부를 만드는 중 오류가 발생했습니다.');
@@ -350,7 +358,7 @@ export default function AttendancePage() {
       setIsProcessing(true);
       toast.info(`${targets.length}개 회차를 ZIP으로 묶는 중...`);
 
-      const result = await downloadAttendanceZip(targets, { label, encoding: csvEncoding, withTime: needsTime });
+      const result = await downloadAttendanceZip(targets, { label: labelFor, encoding: csvEncoding, withTime: needsTime });
 
       // 파일명에는 회차 정보만 들어가고 신청자 정보는 담기지 않는다 (안내에 그대로 써도 안전)
       if (result.fileCount === 0) {
@@ -477,16 +485,37 @@ export default function AttendancePage() {
 
             <div className="space-y-3">
               <div className={SUB_PANEL}>
-                <label className="block text-xs font-bold text-brand-dark mb-2">제목 문구</label>
-                <input
-                  type="text"
-                  value={label}
-                  onChange={(event) => setLabel(event.target.value)}
-                  placeholder="위크앤드"
-                  className="w-full bg-white/70 border border-white rounded-xl px-3 py-2 text-sm font-medium text-brand-dark placeholder:text-brand-muted/60"
-                />
+                <p className="text-xs font-bold text-brand-dark mb-2">제목 문구</p>
+                <div className="space-y-3">
+                  {services.map((serviceName) => {
+                    const sample = groups.find((group) => group.serviceName === serviceName) ?? groups[0];
+                    return (
+                      <label key={serviceName || '__direct'} className="block">
+                        {(serviceName || services.length > 1) && (
+                          <span className="block text-2xs font-bold text-brand-muted mb-1">
+                            {serviceName || '직접 올린 파일'}
+                          </span>
+                        )}
+                        <input
+                          type="text"
+                          value={labelFor(sample)}
+                          onChange={(event) =>
+                            setLabelEdits((previous) => ({ ...previous, [serviceName]: event.target.value }))
+                          }
+                          placeholder={titleLabelFromService(serviceName)}
+                          className="w-full bg-white/70 border border-white rounded-xl px-3 py-2 text-sm font-medium text-brand-dark placeholder:text-brand-muted/60"
+                        />
+                        <span className="block text-2xs font-medium text-brand-muted mt-1 leading-relaxed">
+                          출석부 제목은 <span className="font-bold">{buildAttendanceTitle(sample, labelFor(sample))}</span> 형태로
+                          들어갑니다.
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
                 <p className="text-2xs font-medium text-brand-muted mt-2 leading-relaxed">
-                  출석부 제목은 <span className="font-bold">{buildAttendanceTitle(groups[0], label)}</span> 형태로 들어갑니다.
+                  크롬 확장으로 받은 회차는 서비스 이름으로 문구가 정해집니다. 직접 올린 파일은 '{titleLabelFromService('')}'가
+                  기본입니다.
                 </p>
               </div>
 
@@ -753,7 +782,7 @@ export default function AttendancePage() {
               </div>
 
               <p className="text-2xs font-medium text-brand-muted mt-3 leading-relaxed">
-                파일명: {attendanceFileName(group, label, needsTime(group))} · {smsFileName(group, needsTime(group))}
+                파일명: {attendanceFileName(group, labelFor(group), needsTime(group))} · {smsFileName(group, needsTime(group))}
                 {message.status === 'ok' && ` · ${smsMessageFileName(group, needsTime(group))}`}
               </p>
             </div>

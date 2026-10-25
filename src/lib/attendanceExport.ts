@@ -68,7 +68,7 @@ export const smsFileName = (group: ReservationGroup, withTime = false): string =
 export const smsMessageFileName = (group: ReservationGroup, withTime = false): string =>
   `${sanitizeFileName(`${group.mmdd} 문자내용_${group.programShortName}${withTime ? sessionSuffix(group) : ''}`)}.txt`;
 
-/** "1018 위크앤드.zip" (이용일이 여러 날이면 "1017-1018 위크앤드.zip") */
+/** "1018 위크앤드.zip" (이용일이 여러 날이면 "1017-1018 위크앤드.zip", 문구가 없으면 "1018 출석부.zip") */
 export const attendanceZipFileName = (groups: ReservationGroup[], label: string): string => {
   const days = Array.from(new Set(groups.map((group) => group.mmdd).filter(Boolean))).sort();
   const range = days.length > 1 ? `${days[0]}-${days[days.length - 1]}` : (days[0] ?? '');
@@ -245,7 +245,8 @@ export const buildSmsMessageFile = (group: ReservationGroup, withTime = false): 
 };
 
 export interface AttendanceZipOptions {
-  label: string;
+  /** 회차마다 쓸 제목 문구 (서비스마다 다를 수 있다) */
+  label: (group: ReservationGroup) => string;
   encoding: CsvEncoding;
   /** 같은 날 같은 프로그램이 두 회차 이상이라 파일명에 시간을 붙여야 하는지 */
   withTime: (group: ReservationGroup) => boolean;
@@ -299,11 +300,12 @@ export const buildAttendanceZip = async (
 
   for (const group of groups) {
     const timed = withTime(group);
+    const groupLabel = label(group);
 
     try {
-      add(await buildAttendanceFile(group, label, timed));
+      add(await buildAttendanceFile(group, groupLabel, timed));
     } catch {
-      failedFiles.push(attendanceFileName(group, label, timed));
+      failedFiles.push(attendanceFileName(group, groupLabel, timed));
     }
 
     try {
@@ -319,8 +321,11 @@ export const buildAttendanceZip = async (
     else missingMessages.push(`${group.programShortName}${timed ? sessionSuffix(group) : ''}`);
   }
 
+  // 서비스가 하나면 그 문구로, 여러 서비스가 섞이면 '출석부'로 ZIP 이름을 짓는다
+  const zipLabels = new Set(groups.map((group) => label(group).trim()));
+
   return {
-    fileName: attendanceZipFileName(groups, label),
+    fileName: attendanceZipFileName(groups, zipLabels.size === 1 ? [...zipLabels][0] : ''),
     bytes: fileCount > 0 ? await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' }) : null,
     fileCount,
     failedFiles,

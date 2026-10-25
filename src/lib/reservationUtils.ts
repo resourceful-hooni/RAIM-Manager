@@ -40,6 +40,8 @@ export interface ReservationEntry {
 export interface ReservationGroup {
   /** 묶음 식별자 */
   id: string;
+  /** 서비스명 (크롬 확장이 붙인 파일 이름에서 읽는다. 직접 내려받은 파일이면 빈 문자열) */
+  serviceName: string;
   /** 원본 회차명 ("[8세 이상] 라임북스 : 움직이는 동화책") */
   sessionLabel: string;
   /** 연령 표기를 뺀 프로그램명 ("라임북스 : 움직이는 동화책") */
@@ -138,6 +140,40 @@ export const buildCompositionNote = (entry: Pick<ReservationEntry, 'adult' | 'yo
     .join(', ');
 
 /**
+ * 크롬 확장이 붙인 파일 이름에서 서비스명을 꺼낸다 (ZIP 안의 파일이면 경로를 떼고 본다).
+ * "BRAIN(브레인) 에듀투어_S260908150830740865_20261024-20261025.xlsx" → "BRAIN(브레인) 에듀투어"
+ * 형식이 다르면(사이트에서 직접 내려받은 파일) 빈 문자열.
+ */
+export const serviceNameFromFileName = (fileName: string): string => {
+  const base = fileName.split('/').pop()?.trim() ?? '';
+  const matched = base.match(/^(.+)_S\d+_\d{8}-\d{8}\.xlsx$/i);
+  return matched ? matched[1].trim() : '';
+};
+
+/** 직접 올린 파일(서비스명을 모를 때)의 제목 문구 */
+export const DEFAULT_TITLE_LABEL = '위크앤드';
+
+/**
+ * 출석부 제목·파일명 앞에 붙일 문구를 서비스명에서 만든다.
+ * "9-10월 라임 위.크.앤.드." → "위크앤드", "BRAIN(브레인) 에듀투어" → "BRAIN(브레인) 에듀투어"
+ */
+export const titleLabelFromService = (serviceName: string): string => {
+  if (!serviceName.trim()) return DEFAULT_TITLE_LABEL;
+  const cleaned = serviceName
+    .replace(/^(\s*\[[^\]]*\]\s*)+/, '')
+    // 운영 기간 표기 ("9-10월 ", "10월 ")
+    .replace(/^\d{1,2}(\s*[-~]\s*\d{1,2})?\s*월\s+/, '')
+    // 글자 사이 마침표 ("위.크.앤.드." → "위크앤드")
+    .replace(/(\p{L})\.(?=\p{L})/gu, '$1')
+    .replace(/[.\s]+$/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  // 위크앤드는 기존 출석부와 같은 표기로 맞춘다
+  if (cleaned.replace(/\s+/g, '').includes('위크앤드')) return '위크앤드';
+  return cleaned || serviceName.trim();
+};
+
+/**
  * 출석부 제목 ("0920 위크앤드_라임북스 : 움직이는 동화책")
  * 같은 날 같은 프로그램이 두 회차 이상이면 제목만으로 구분되지 않으므로 시간을 덧붙인다.
  */
@@ -207,8 +243,10 @@ export class ReservationParseError extends Error {}
 /**
  * 예약현황조회 워크북을 회차별로 묶어 반환한다.
  * 한 파일에 여러 프로그램·날짜가 섞여 있어도 각각 분리된다.
+ * serviceName을 알면(크롬 확장에서 받은 파일) 회차마다 붙여 두어, 서비스별 제목 문구와
+ * 서로 다른 서비스의 같은 회차명을 구분하는 데 쓴다.
  */
-export const parseReservationWorkbook = (data: ArrayBuffer): ReservationGroup[] => {
+export const parseReservationWorkbook = (data: ArrayBuffer, serviceName = ''): ReservationGroup[] => {
   let workbook: XLSX.WorkBook;
   try {
     workbook = XLSX.read(data);
@@ -293,13 +331,15 @@ export const parseReservationWorkbook = (data: ArrayBuffer): ReservationGroup[] 
 
     const useDate = parseUseDate(at(row, col.useDate));
     const programName = stripAgePrefix(sessionLabel);
-    // 같은 날 같은 프로그램이라도 회차 시간이 다르면 별도 출석부로 나눈다
-    const id = `${useDate}__${cellText(at(row, col.timeRange))}__${sessionLabel}`;
+    // 같은 날 같은 프로그램이라도 회차 시간이 다르면 별도 출석부로 나눈다.
+    // 회차명이 같은 다른 서비스("1회차" 등)가 서로 덮어쓰지 않도록 서비스명도 넣는다.
+    const id = `${useDate}__${cellText(at(row, col.timeRange))}__${sessionLabel}${serviceName ? `__${serviceName}` : ''}`;
 
     let group = groups.get(id);
     if (!group) {
       group = {
         id,
+        serviceName,
         sessionLabel,
         programName,
         programShortName: toShortProgramName(programName),
