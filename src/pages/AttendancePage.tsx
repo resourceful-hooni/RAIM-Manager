@@ -41,6 +41,7 @@ import { collectDroppedFiles, expandToWorkbooks } from '@/lib/fileDropUtils';
 import { buildSmsMessage } from '@/lib/smsMessage';
 import {
   RAIM_EXTENSION_STORE_URL,
+  RAIM_EXTENSION_ZIP_URL,
   connectExtensionBridge,
   detectExtension,
   type ExtensionStatus,
@@ -440,6 +441,16 @@ export default function AttendancePage() {
             >
               크롬 웹스토어에서 설치하기
             </a>
+          </p>
+        )}
+        {/* 웹스토어에 올리기 전에는 설명서의 압축해제 설치 파일을 안내한다 */}
+        {extensionStatus && !extensionStatus.installed && !RAIM_EXTENSION_STORE_URL && (
+          <p className="-mt-3 mb-4 text-2xs font-medium text-brand-muted">
+            크롬 확장이 아직 없습니다.{' '}
+            <a href={RAIM_EXTENSION_ZIP_URL} download className="font-bold text-brand-blue underline underline-offset-2">
+              설치 파일 받기
+            </a>{' '}
+            · 설치 방법은 화면 위쪽 <strong>설명서</strong> › 8. 크롬 확장에 있습니다.
           </p>
         )}
 
