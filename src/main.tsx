@@ -130,12 +130,50 @@ function promptRefresh() {
   });
 }
 
+/**
+ * 새 버전 확인.
+ * 브라우저는 페이지를 새로 열 때만 서비스 워커 업데이트를 확인하는데, 카운터·출석부 탭은
+ * 하루 종일 열어 두므로 배포해도 안내가 뜨지 않았다. 몇 분마다, 그리고 탭으로 돌아올 때 확인한다.
+ */
+const UPDATE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+const UPDATE_CHECK_MIN_GAP_MS = 60 * 1000;
+
+function watchForUpdates(swUrl: string, registration: ServiceWorkerRegistration) {
+  let lastCheck = 0;
+
+  const check = async () => {
+    // 안내를 닫았더라도 대기 중인 새 버전이 있으면 다시 알린다
+    if (registration.waiting) {
+      promptRefresh();
+      return;
+    }
+    const now = Date.now();
+    if (registration.installing || !navigator.onLine || now - lastCheck < UPDATE_CHECK_MIN_GAP_MS) return;
+    lastCheck = now;
+    try {
+      // 서버가 응답할 때만 update()를 부른다 (오프라인이면 update()가 오래 매달린다)
+      const response = await fetch(swUrl, { cache: 'no-store', headers: { 'cache-control': 'no-cache' } });
+      if (response.status === 200) await registration.update();
+    } catch {
+      // 네트워크가 끊겼으면 다음 확인 때 다시 본다
+    }
+  };
+
+  window.setInterval(() => void check(), UPDATE_CHECK_INTERVAL_MS);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void check();
+  });
+}
+
 const updateSW = registerSW({
   // prompt 모드: 새 버전이 대기 상태가 되면 알리고, 직원이 새로고침을 누를 때 적용한다.
   // 그 전까지는 실행 중인 빌드의 청크가 프리캐시에 그대로 남는다.
   onNeedRefresh: promptRefresh,
   onOfflineReady() {
     console.log('App is ready to work offline');
+  },
+  onRegisteredSW(swUrl, registration) {
+    if (registration) watchForUpdates(swUrl, registration);
   },
 });
 
