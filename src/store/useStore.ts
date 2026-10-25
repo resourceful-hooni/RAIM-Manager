@@ -160,7 +160,8 @@ export const useStore = create<AppState>((set, get) => ({
     // Optimistic update
     set({ appPin: pin });
     try {
-      await setDoc(doc(db, 'settings', 'app'), { pin });
+      // settings/app에는 '최근 입력자'(recentActions)도 같이 들어 있어 merge로 pin만 바꾼다.
+      await setDoc(doc(db, 'settings', 'app'), { pin }, { merge: true });
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'settings/app');
     }
