@@ -6,6 +6,7 @@ import { Toaster, toast } from 'sonner';
 import Layout from './components/Layout';
 import { AuthProvider } from './components/AuthProvider';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { UpdateToast } from './components/UpdateToast';
 import { registerSW } from 'virtual:pwa-register';
 import './index.css';
 
@@ -93,41 +94,46 @@ showBootPlaceholder(rootElement);
  * 입력이 끊길 수 있었다. 이제는 토스트로 알리고 새로고침 시점을 직원이 고른다.
  * ------------------------------------------------------------------ */
 let isUpdatePromptOpen = false;
+/** 이 탭에서 새로고침을 눌러 새 버전을 적용하는 중인지 */
+let isApplyingUpdate = false;
+let hasReloaded = false;
+let swRegistration: ServiceWorkerRegistration | undefined;
+
+/** 새 버전이 화면을 넘겨받지 못해도 이 시간이 지나면 새로고침한다 */
+const UPDATE_APPLY_TIMEOUT_MS = 8000;
+
+function reloadOnce() {
+  if (hasReloaded) return;
+  hasReloaded = true;
+  window.location.reload();
+}
 
 function applyUpdateAndReload() {
-  const reload = () => window.location.reload();
-  // updateSW가 응답하지 않아도 새로고침은 반드시 진행한다
-  const fallbackTimer = window.setTimeout(reload, 1200);
+  // 대기 중인 새 버전이 없으면(이미 적용됐거나 이전 빌드 청크만 사라진 경우) 바로 새로고침한다
+  if (!swRegistration?.waiting || !('serviceWorker' in navigator)) {
+    reloadOnce();
+    return;
+  }
+  isApplyingUpdate = true;
+  // 새 워커가 이 화면을 넘겨받은 뒤에 새로고침한다. 먼저 새로고침하면 이전 워커가 옛 화면을 내주고,
+  // 그 사이 새 워커가 옛 파일을 캐시에서 지워 옛 스크립트를 못 받아 빈 화면이 된다.
+  navigator.serviceWorker.addEventListener('controllerchange', reloadOnce, { once: true });
+  window.setTimeout(reloadOnce, UPDATE_APPLY_TIMEOUT_MS);
   Promise.resolve()
     .then(() => updateSW(true))
-    .catch(() => undefined)
-    .finally(() => {
-      window.clearTimeout(fallbackTimer);
-      reload();
-    });
+    .catch(reloadOnce);
 }
 
 function promptRefresh() {
   if (isUpdatePromptOpen) return;
   isUpdatePromptOpen = true;
-  toast('새 버전이 준비되었습니다.', {
-    id: 'sw-update',
-    description: '집계 중이라면 입력을 마친 뒤 새로고침해 주세요.',
-    duration: Infinity,
-    action: {
-      label: '새로고침',
-      onClick: applyUpdateAndReload,
-    },
-    classNames: {
-      actionButton: 'min-h-11 px-4 font-bold',
-    },
-    onDismiss: () => {
-      isUpdatePromptOpen = false;
-    },
-    onAutoClose: () => {
-      isUpdatePromptOpen = false;
-    },
-  });
+  const closed = () => {
+    isUpdatePromptOpen = false;
+  };
+  toast.custom(
+    (id) => <UpdateToast onRefresh={applyUpdateAndReload} onLater={() => toast.dismiss(id)} />,
+    { id: 'sw-update', duration: Infinity, dismissible: false, onDismiss: closed, onAutoClose: closed },
+  );
 }
 
 /**
@@ -169,10 +175,17 @@ const updateSW = registerSW({
   // prompt 모드: 새 버전이 대기 상태가 되면 알리고, 직원이 새로고침을 누를 때 적용한다.
   // 그 전까지는 실행 중인 빌드의 청크가 프리캐시에 그대로 남는다.
   onNeedRefresh: promptRefresh,
+  // 새 버전이 화면을 넘겨받았을 때. 다른 탭에서 새로고침을 눌렀다면 이 탭은 집계 중일 수 있으니
+  // 바로 새로고침하지 않고 안내만 띄운다.
+  onNeedReload() {
+    if (isApplyingUpdate) reloadOnce();
+    else promptRefresh();
+  },
   onOfflineReady() {
     console.log('App is ready to work offline');
   },
   onRegisteredSW(swUrl, registration) {
+    swRegistration = registration;
     if (registration) watchForUpdates(swUrl, registration);
   },
 });
