@@ -245,7 +245,7 @@ ${report.rawSampleText ? `Raw text sample (first 150 chars):\n${report.rawSample
   }
 };
 
-export const exportToXLSX = async (currentDateStr: string, allRecords: VisitorRecord[], mode: 'daily' | 'monthly' = 'daily') => {
+export const exportToXLSX = async (currentDateStr: string, allRecords: VisitorRecord[], mode: 'daily' | 'monthly' | 'yearly' = 'daily') => {
   const diagnostics: DiagnosticReport = {
     url: 'Inlined Base64 (Local Resource)',
     isZipSignature: true,
@@ -284,8 +284,10 @@ export const exportToXLSX = async (currentDateStr: string, allRecords: VisitorRe
     const validDay = day || 1; 
     const dateObj = new Date(year, month - 1, validDay);
     
-    const dayOfWeek = dateObj.getDay(); 
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    const dayOfWeek = dateObj.getDay();
+    // 월간·연간 누계는 주중과 주말이 섞이므로 모든 회차가 있는 주중 양식에 담는다.
+    // 1일의 요일로 고르면 1일이 주말인 달은 주말 양식이 골라져 메디봇 1·2·5회차가 0으로 빠졌다.
+    const isWeekend = mode === 'daily' && (dayOfWeek === 0 || dayOfWeek === 6);
     let targetWorksheet: ExcelJS.Worksheet;
     let baseRowRoom1: number;
     let baseRowRoom2: number;
@@ -312,16 +314,22 @@ export const exportToXLSX = async (currentDateStr: string, allRecords: VisitorRe
       const days = ['일', '월', '화', '수', '목', '금', '토'];
       const formattedDateTitle = `${format(dateObj, 'MM')}월 ${format(dateObj, 'dd')}일(${days[dayOfWeek]}요일) 일일 운영 결과 보고`;
       targetWorksheet.getCell(titleCell).value = formattedDateTitle;
-    } else {
+    } else if (mode === 'monthly') {
       const formattedDateTitle = `${format(dateObj, 'MM')}월 월간 운영 결과 보고`;
       targetWorksheet.getCell(titleCell).value = formattedDateTitle;
       targetWorksheet.getCell(tableTitleCell).value = `□ ${format(dateObj, 'yyyy')}년 ${format(dateObj, 'MM')}월 교육장 관람인원 (월간 누계)`;
+    } else {
+      targetWorksheet.getCell(titleCell).value = `${format(dateObj, 'yyyy')}년 연간 운영 결과 보고`;
+      targetWorksheet.getCell(tableTitleCell).value = `□ ${format(dateObj, 'yyyy')}년 교육장 관람인원 (연간 누계)`;
     }
 
     let recordsToAggregate = allRecords;
     if (mode === 'monthly') {
       const currentMonthPrefix = currentDateStr.substring(0, 7);
       recordsToAggregate = allRecords.filter(r => r.date.startsWith(currentMonthPrefix));
+    } else if (mode === 'yearly') {
+      const currentYearPrefix = `${currentDateStr.substring(0, 4)}-`;
+      recordsToAggregate = allRecords.filter(r => r.date.startsWith(currentYearPrefix));
     } else {
       recordsToAggregate = allRecords.filter(r => r.date === currentDateStr);
     }
@@ -484,7 +492,11 @@ export const exportToXLSX = async (currentDateStr: string, allRecords: VisitorRe
     toast.info('파일 생성 중...');
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
-    const fileNameDate = mode === 'monthly' ? `${currentDateStr.substring(0, 7).replace(/-/g, '')}_월간` : currentDateStr.replace(/-/g, '');
+    const fileNameDate = mode === 'monthly'
+      ? `${currentDateStr.substring(0, 7).replace(/-/g, '')}_월간`
+      : mode === 'yearly'
+        ? `${currentDateStr.substring(0, 4)}_연간`
+        : currentDateStr.replace(/-/g, '');
     saveAs(blob, `${fileNameDate}_교육장_관람인원.xlsx`);
     toast.success('다운로드가 완료되었습니다.');
   } catch (error: any) {

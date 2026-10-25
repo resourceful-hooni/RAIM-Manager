@@ -45,7 +45,7 @@ const SEGMENT_INACTIVE = "bg-transparent text-brand-muted border-transparent hov
 
 export default function DashboardPage() {
   const activeProgram = useStore(state => state.activeProgram);
-  const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [programFilter, setProgramFilter] = useState<'all' | '무인자동차' | '스낵헌터' | '메디봇'>(activeProgram);
   const [chartFilterType, setChartFilterType] = useState<'all' | 'autonomous' | 'reserved'>('all');
@@ -403,13 +403,14 @@ export default function DashboardPage() {
       });
     }
 
-    // Weekly/Monthly: Use Line Chart data
+    // Weekly/Monthly: 날짜별, Yearly: 월별 합계로 Line Chart를 그린다.
+    // 키는 'yyyy-MM-dd' 또는 'yyyy-MM'이라 문자열 정렬이 곧 시간 순서다.
     const dailyMap: Record<string, any> = {};
     chartFilteredRecords.forEach(r => {
-      const day = r.date;
+      const day = viewMode === 'yearly' ? r.date.substring(0, 7) : r.date;
       if (!dailyMap[day]) {
-        dailyMap[day] = { 
-          name: format(new Date(day), 'MM/dd'), 
+        dailyMap[day] = {
+          name: viewMode === 'yearly' ? `${Number(day.substring(5, 7))}월` : format(new Date(day), 'MM/dd'),
           '총합계': 0,
           '성인': 0, '청소년': 0, '어린이': 0, '유아': 0,
           '남성': 0, '여성': 0,
@@ -445,7 +446,8 @@ export default function DashboardPage() {
       dailyMap[day]['유아(남)'] += safeCounts.infant_m;
       dailyMap[day]['유아(여)'] += safeCounts.infant_f;
     });
-    return Object.values(dailyMap).map(item => {
+    return Object.keys(dailyMap).sort().map(day => {
+      const item = dailyMap[day];
       const cleanedItem: any = { name: item.name };
       Object.keys(item).forEach(key => {
         if (key !== 'name' && item[key] > 0) {
@@ -453,7 +455,7 @@ export default function DashboardPage() {
         }
       });
       return cleanedItem;
-    }).sort((a, b) => a.name.localeCompare(b.name));
+    });
   }, [filteredRecords, viewMode, chartFilterType]);
   const pieData = [
     { name: '남성', value: stats.breakdown['성인(남)'] + stats.breakdown['청소년(남)'] + stats.breakdown['어린이(남)'] + stats.breakdown['유아(남)'] },
@@ -883,7 +885,7 @@ export default function DashboardPage() {
                 ))}
               </div>
               <button
-                onClick={() => exportToXLSX(date, allRecords, viewMode === 'monthly' ? 'monthly' : 'daily')}
+                onClick={() => exportToXLSX(date, allRecords, viewMode === 'yearly' ? 'yearly' : viewMode === 'monthly' ? 'monthly' : 'daily')}
                 className="flex items-center justify-center min-h-11 min-w-11 bg-white/60 hover:bg-white/90 text-brand-blue rounded-xl transition-all shadow-sm border border-white/80 active:scale-95"
                 title="엑셀 내보내기"
               >

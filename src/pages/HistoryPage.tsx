@@ -14,6 +14,17 @@ function programChipClass(program: string) {
   return 'text-brand-dark bg-white/70';
 }
 
+/* 방문객 수: 연령·성별 8칸만 더한다. 취소·노쇼는 오지 않은 인원이라 빼서
+   대시보드 '총 방문객'과 같은 기준으로 맞춘다(날짜 합계와 회차 총 인원 모두). */
+const VISITOR_KEYS = [
+  'adult_m', 'adult_f', 'youth_m', 'youth_f',
+  'child_m', 'child_f', 'infant_m', 'infant_f',
+] as const;
+
+function visitorTotal(counts: Partial<Record<(typeof VISITOR_KEYS)[number], number>>) {
+  return VISITOR_KEYS.reduce((sum, key) => sum + (counts[key] || 0), 0);
+}
+
 export default function HistoryPage() {
   const allRecords = useStore(state => state.records);
   const activeProgram = useStore(state => state.activeProgram);
@@ -26,14 +37,7 @@ export default function HistoryPage() {
       const getRecordProgram = (record: any) => record.program || '무인자동차';
       if (programFilter !== 'all' && getRecordProgram(r) !== programFilter) return false;
 
-      const safeCounts = {
-        adult_m: r.counts.adult_m || 0, adult_f: r.counts.adult_f || 0,
-        youth_m: r.counts.youth_m || 0, youth_f: r.counts.youth_f || 0,
-        child_m: r.counts.child_m || 0, child_f: r.counts.child_f || 0,
-        infant_m: r.counts.infant_m || 0, infant_f: r.counts.infant_f || 0,
-      };
-      const total = (Object.values(safeCounts) as number[]).reduce((a, b) => a + b, 0);
-      return total > 0 || r.memo.trim() !== '';
+      return visitorTotal(r.counts) > 0 || r.memo.trim() !== '';
     });
   }, [allRecords, programFilter]);
 
@@ -130,11 +134,7 @@ export default function HistoryPage() {
           {groupedRecords.map(({ date, records }) => {
             const todayStr = format(new Date(), 'yyyy-MM-dd');
             const isExpanded = expandedDates[date] !== undefined ? expandedDates[date] : date === todayStr;
-            const dailyTotal = records.reduce((sum, r) => {
-              const safeCounts = { ...r.counts };
-              const t = Object.values(safeCounts).reduce((a: any, b: any) => (a || 0) + (b || 0), 0);
-              return sum + (t as number);
-            }, 0);
+            const dailyTotal = records.reduce((sum, r) => sum + visitorTotal(r.counts), 0);
 
             return (
               <div key={date} className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-3xl overflow-hidden">
@@ -168,7 +168,7 @@ export default function HistoryPage() {
                         child_m: record.counts.child_m || 0, child_f: record.counts.child_f || 0,
                         infant_m: record.counts.infant_m || 0, infant_f: record.counts.infant_f || 0,
                       };
-                      const total = (Object.values(safeCounts) as number[]).reduce((a, b) => a + b, 0);
+                      const total = visitorTotal(safeCounts);
                       const maleTotal = safeCounts.adult_m + safeCounts.youth_m + safeCounts.child_m + safeCounts.infant_m;
                       const femaleTotal = safeCounts.adult_f + safeCounts.youth_f + safeCounts.child_f + safeCounts.infant_f;
                       const program = (record as any).program || '무인자동차';
