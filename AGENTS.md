@@ -29,6 +29,7 @@
    - 파일 저장은 blob으로 만든 ZIP 하나로만 합니다. `data:` URL 다운로드는 크롬 다운로드 기록에 내용이 남을 수 있어 쓰지 않습니다. `downloads` 권한도 넣지 마십시오.
    - 확장은 빌드 없이 순수 JS로 유지합니다. `tsconfig.json`의 `exclude`에 들어 있어 `npm run lint` 대상이 아닙니다.
    - 웹스토어용 zip은 `npm run ext:pack`으로만 만듭니다. 개발용 주소(localhost)·console·data: URL·downloads 권한이 있으면 스크립트가 멈춥니다. 웹스토어에 올리는 개인정보처리방침은 `public/extension-privacy.html`입니다.
+   - 설명서에서 내려받는 압축해제 설치용 `public/downloads/raim-extension.zip`은 `npm run build`가 `ext:pack:site`로 매번 새로 만듭니다(같은 안전 점검, key 유지). 저장소에 커밋하지 말고(.gitignore), 파일 이름도 설명서 링크 때문에 바꾸지 마십시오.
 
 5. **GitHub Push 및 배포 규칙**:
    - Agent가 코드를 Github에 직접 Push할 때 `fatal: could not read Username for 'https://github.com': No such device or address`와 같은 인증 에러가 빈번하게 발생할 수 있습니다.

@@ -25,11 +25,12 @@ export default defineConfig(({mode}) => {
           // png/svg까지 넣으면 includeAssets 항목과 중복 등록되고,
           // 빼기로 한 logo_wa.png가 glob으로 다시 딸려 들어온다.
           globPatterns: ['**/*.{js,css,html,woff2}'],
-          globIgnores: ['**/*.xlsx', '**/sheets/**/*'],
+          globIgnores: ['**/*.xlsx', '**/sheets/**/*', '**/downloads/**/*'],
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
           clientsClaim: false,
           skipWaiting: false,
-          navigateFallbackDenylist: [/\.xlsx$/, /^\/sheets/, /^\/api/, /^\/extension-privacy/]
+          // 확장 설치 파일(/downloads/*.zip)을 링크로 열 때 index.html이 대신 내려가지 않게 한다
+          navigateFallbackDenylist: [/\.xlsx$/, /^\/sheets/, /^\/api/, /^\/extension-privacy/, /^\/downloads\//, /\.zip$/]
         },
         manifest: {
           name: 'RAIM 방문자 카운터',

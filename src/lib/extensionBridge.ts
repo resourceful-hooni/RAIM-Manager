@@ -30,6 +30,9 @@ export const RAIM_EXTENSION_IDS: readonly string[] = ['ohjbofjcjnkidgidaclhnppmc
 /** 크롬 웹스토어 설치 주소 (게시 후 채운다. 비어 있으면 화면에 설치 링크를 띄우지 않는다) */
 export const RAIM_EXTENSION_STORE_URL = '';
 
+/** 압축해제 설치용 zip. npm run build(ext:pack:site)가 extension/에서 만들어 public/downloads에 둔다 */
+export const RAIM_EXTENSION_ZIP_URL = '/downloads/raim-extension.zip';
+
 /** 한 번에 받는 파일 수와 파일 크기 상한 (예약현황조회 엑셀은 보통 수십 KB) */
 const MAX_FILES = 50;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;

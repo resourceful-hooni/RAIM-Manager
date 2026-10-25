@@ -5,6 +5,7 @@ import {
   BookOpen,
   ClipboardList,
   Clock,
+  Download,
   FileSpreadsheet,
   History,
   Info,
@@ -21,6 +22,8 @@ import {
   Wifi,
   Zap,
 } from 'lucide-react';
+import { RAIM_EXTENSION_ZIP_URL } from '@/lib/extensionBridge';
+import { version as EXTENSION_VERSION } from '../../extension/manifest.json';
 
 /**
  * 시스템 사용 설명서 (헤더의 '설명서' 버튼으로 연다).
@@ -28,7 +31,7 @@ import {
  */
 
 /** 설명서가 기준으로 삼은 앱 버전 (설정 > 앱 정보의 버전과 맞춘다) */
-const MANUAL_VERSION = '2.2.5';
+const MANUAL_VERSION = '2.2.6';
 
 type IconType = ComponentType<{ className?: string }>;
 
@@ -127,7 +130,8 @@ function Terms({ rows }: { rows: [ReactNode, ReactNode][] }) {
       {rows.map(([term, description], index) => (
         <div key={index} className="grid grid-cols-[7.5rem_1fr] sm:grid-cols-[10rem_1fr] gap-3 px-3 py-2.5">
           <dt className="font-bold text-brand-dark">{term}</dt>
-          <dd className="text-brand-muted leading-relaxed">{description}</dd>
+          {/* chrome://extensions 같은 긴 낱말이 칸을 밀어 잘리지 않도록 필요할 때만 쪼갠다 */}
+          <dd className="min-w-0 wrap-anywhere text-brand-muted leading-relaxed">{description}</dd>
         </div>
       ))}
     </dl>
@@ -671,18 +675,189 @@ function ExtensionTab() {
         </Lead>
         <Terms
           rows={[
-            [
-              '설치',
-              <>
-                담당자에게 받은 <code className="font-mono">raim-extension-…-dev.zip</code>의 압축을 지우지 않을 폴더에 풉니다 → 크롬 주소창{' '}
-                <code className="font-mono">chrome://extensions</code> → 오른쪽 위 <Ui>개발자 모드</Ui> 켜기 →{' '}
-                <Ui>압축해제된 확장 프로그램을 로드합니다</Ui> → 그 폴더 선택. 크롬 웹스토어 링크가 생기면 링크에서 설치합니다.
-              </>,
-            ],
+            ['필요한 것', 'PC용 크롬(버전 116 이상), 공공예약 관리자 계정, RAIM Manager 로그인'],
+            ['설치', 'PC마다 한 번, 3분 정도 걸립니다. 웹스토어 대신 아래 설치 파일을 받아 직접 넣습니다.'],
             [
               '연결 확인',
               <>
                 출석부 화면 위쪽에 <Ui>✓ 크롬 확장 연결됨</Ui>이 보이면 준비된 것입니다.
+              </>,
+            ],
+          ]}
+        />
+      </Card>
+
+      <Card icon={Download} title="설치하기 (PC마다 한 번)">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <a
+            href={RAIM_EXTENSION_ZIP_URL}
+            download
+            className="inline-flex items-center gap-2 min-h-11 px-4 rounded-xl bg-brand-dark text-white text-sm font-bold shadow-sm hover:bg-brand-blue transition-colors active:scale-95"
+          >
+            <Download className="w-4 h-4 shrink-0" />
+            확장 프로그램 내려받기
+          </a>
+          <span className="text-xs text-brand-muted">
+            <code className="font-mono">raim-extension.zip</code> · 버전 {EXTENSION_VERSION}
+          </span>
+        </div>
+        <Steps
+          items={[
+            <>
+              위 <Ui>확장 프로그램 내려받기</Ui>를 눌러 <code className="font-mono">raim-extension.zip</code>을 받습니다. 크롬 오른쪽 위
+              다운로드 아이콘이나 PC의 <strong>다운로드</strong> 폴더에 있습니다.
+            </>,
+            <>
+              받은 파일에 마우스 오른쪽 버튼 → <Ui>압축 풀기...</Ui>(윈도우에 따라 <Ui>모두 압축 풀기...</Ui>)를 누르고, 풀 위치를{' '}
+              <strong>지우지 않을 곳</strong>(예: <code className="font-mono whitespace-nowrap">문서\raim-extension</code>)으로 바꾼 뒤 <Ui>압축 풀기</Ui>를
+              누릅니다. 알집·반디집으로 풀어도 됩니다.
+            </>,
+            <>
+              풀린 <code className="font-mono">raim-extension</code> 폴더를 열어 <code className="font-mono">manifest.json</code>과{' '}
+              <code className="font-mono">icons</code> · <code className="font-mono">options</code> ·{' '}
+              <code className="font-mono">yeyak</code> 폴더가 바로 보이는지 확인합니다.
+            </>,
+            <>
+              크롬 주소창에 <code className="font-mono">chrome://extensions</code>를 입력하고 Enter를 누릅니다. (오른쪽 위 ⋮ →{' '}
+              <Ui>확장 프로그램</Ui> → <Ui>확장 프로그램 관리</Ui>로 가도 됩니다)
+            </>,
+            <>
+              오른쪽 위 <Ui>개발자 모드</Ui> 스위치를 켭니다.
+            </>,
+            <>
+              왼쪽 위에 생긴 <Ui>압축해제된 확장 프로그램을 로드합니다</Ui>를 누르고, 3번의 <code className="font-mono">raim-extension</code>{' '}
+              폴더를 골라 <Ui>폴더 선택</Ui>을 누릅니다.
+            </>,
+            <>
+              목록에 <Ui>RAIM 예약현황 일괄 출력</Ui> 카드가 생기고 오른쪽 아래 스위치가 켜져 있으면 설치된 것입니다.
+            </>,
+            <>
+              주소창 오른쪽 퍼즐 모양 <Ui>확장 프로그램</Ui> 아이콘 → <Ui>RAIM 예약현황 일괄 출력</Ui> 옆 압정 아이콘을 누르면 툴바에
+              고정되어 설정(다운로드 사유·요청 간격)을 열기 쉽습니다. (선택)
+            </>,
+            <>
+              RAIM 출석부 화면을 열거나 새로고침해 위쪽에 <Ui>✓ 크롬 확장 연결됨 (v{EXTENSION_VERSION})</Ui>이 보이는지 확인합니다.
+            </>,
+          ]}
+        />
+
+        {/* chrome://extensions 화면 모형: 개발자 모드 스위치와 로드 버튼 위치 */}
+        <div className="flex justify-center py-2" aria-hidden="true">
+          <div className="bg-white/70 border border-white rounded-2xl p-3 w-full max-w-sm shadow-sm space-y-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-bold text-brand-dark">확장 프로그램</span>
+              <span className="flex items-center gap-1.5 text-2xs font-bold text-brand-dark">
+                개발자 모드
+                <span className="relative w-7 h-4 rounded-full bg-brand-blue">
+                  <span className="absolute right-0.5 top-0.5 w-3 h-3 rounded-full bg-white" />
+                </span>
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              <span className="text-3xs font-bold text-brand-blue border-2 border-brand-blue rounded-md px-1.5 py-1">
+                압축해제된 확장 프로그램을 로드합니다
+              </span>
+              <span className="text-3xs font-bold text-brand-muted border border-brand-blue/20 rounded-md px-1.5 py-1">
+                확장 프로그램 압축
+              </span>
+              <span className="text-3xs font-bold text-brand-muted border border-brand-blue/20 rounded-md px-1.5 py-1">업데이트</span>
+            </div>
+            <div className="flex items-center justify-between gap-2 bg-white/80 border border-brand-blue/10 rounded-lg px-2.5 py-2">
+              <span className="min-w-0">
+                <span className="block text-2xs font-bold text-brand-dark">RAIM 예약현황 일괄 출력 {EXTENSION_VERSION}</span>
+                <span className="block text-3xs text-brand-muted truncate">ID: ohjbofjcjnkidgidaclhnppmcncnfbjf</span>
+              </span>
+              <span className="relative w-7 h-4 rounded-full bg-brand-blue shrink-0">
+                <span className="absolute right-0.5 top-0.5 w-3 h-3 rounded-full bg-white" />
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <Tip tone="warn" title="압축을 푼 폴더는 지우거나 옮기지 마세요">
+          <p>크롬은 설치할 때 고른 폴더에서 확장을 그대로 읽습니다. 폴더를 지우거나 옮기면 확장이 꺼집니다.</p>
+          <p>
+            다운로드 폴더는 정리하다 지우기 쉬우니 문서 폴더처럼 오래 둘 곳에 푸세요. 옮겼다면 확장 카드의 <Ui>삭제</Ui>를 누르고 6번부터
+            다시 합니다.
+          </p>
+        </Tip>
+      </Card>
+
+      <Card icon={RefreshCw} title="새 버전으로 바꾸기">
+        <Lead>
+          웹스토어로 설치한 확장과 달리 저절로 업데이트되지 않습니다. 위 내려받기 버튼 옆 버전이 출석부 화면의{' '}
+          <Ui>✓ 크롬 확장 연결됨 (v…)</Ui>보다 높으면 아래처럼 바꿉니다.
+        </Lead>
+        <Steps
+          items={[
+            <>
+              <Ui>확장 프로그램 내려받기</Ui>로 새 <code className="font-mono">raim-extension.zip</code>을 받습니다.
+            </>,
+            <>
+              처음 설치한 <strong>같은 폴더</strong>에 압축을 풉니다. 같은 이름의 파일을 어떻게 할지 물으면{' '}
+              <Ui>대상 폴더의 파일 덮어쓰기</Ui>를 고릅니다.
+            </>,
+            <>
+              <code className="font-mono">chrome://extensions</code>에서 <Ui>RAIM 예약현황 일괄 출력</Ui> 카드의 새로고침(↻) 아이콘을
+              누릅니다.
+            </>,
+            <>
+              카드의 버전 숫자가 바뀌었는지 보고, 출석부 화면을 새로고침해 <Ui>✓ 크롬 확장 연결됨</Ui>의 버전도 같은지 확인합니다.
+            </>,
+          ]}
+        />
+        <p className="text-xs text-brand-muted">
+          확장 ID가 그대로라 RAIM과 다시 연결할 필요는 없습니다. 이미 열어 둔 공공예약 화면은 새로고침해야 새 버전이 붙습니다.
+        </p>
+      </Card>
+
+      <Card icon={ShieldAlert} title="설치가 안 될 때">
+        <Terms
+          rows={[
+            [
+              <>'매니페스트 파일이 없거나 읽을 수 없습니다'</>,
+              <>
+                폴더를 한 겹 잘못 골랐습니다. <code className="font-mono">manifest.json</code>이 바로 들어 있는 폴더를 고르세요. 압축을 두 번
+                풀어 <code className="font-mono">raim-extension</code> 안에 같은 이름 폴더가 하나 더 생긴 경우가 많습니다.
+              </>,
+            ],
+            [
+              <>'압축해제된 확장 프로그램을 로드합니다'가 없음</>,
+              <>
+                오른쪽 위 <Ui>개발자 모드</Ui>가 꺼져 있습니다. 켜면 나타납니다.
+              </>,
+            ],
+            [
+              '개발자 모드를 켤 수 없음',
+              <>
+                스위치가 회색이거나 '관리자가 설정함'이 보이면 기관 PC 정책으로 막힌 것입니다. 전산 담당자에게 확장 ID{' '}
+                <code className="font-mono break-all">ohjbofjcjnkidgidaclhnppmcncnfbjf</code> 설치 허용을 요청하세요.
+              </>,
+            ],
+            [
+              '크롬을 켤 때 사용 중지 안내',
+              <>
+                '개발자 모드 확장 프로그램 사용 중지' 같은 안내가 뜨면 직접 설치한 확장이라 나오는 것입니다. 닫기를 누르세요. 사용 중지를
+                눌렀다면 <code className="font-mono">chrome://extensions</code>에서 스위치를 다시 켭니다.
+              </>,
+            ],
+            [
+              <>카드에 <Ui>오류</Ui> 버튼이 생김</>,
+              <>
+                카드의 <Ui>삭제</Ui>를 누르고, zip을 새로 받아 빈 폴더에 풀어 처음부터 설치합니다.
+              </>,
+            ],
+            [
+              <>출석부에 '연결됨'이 안 보임</>,
+              <>
+                확장 카드의 스위치가 켜져 있는지 보고 출석부 화면을 새로고침합니다. 주소가{' '}
+                <code className="font-mono break-all">https://raim.kimjihoon.me</code>인 크롬 창에서만 연결됩니다.
+              </>,
+            ],
+            [
+              '공공예약 화면에 패널이 안 보임',
+              <>
+                <strong>예약관리 › 예약현황관리</strong> 화면인지 확인하고 새로고침합니다. 설치 전에 열어 둔 화면에는 새로고침해야 붙습니다.
               </>,
             ],
           ]}
@@ -727,7 +902,7 @@ function ExtensionTab() {
             '엑셀은 사이트의 엑셀 출력과 같은 방식으로 받기 때문에, 서비스마다 다운로드 사유가 사이트에 기록됩니다.',
             '받은 파일은 브라우저 메모리에만 잠깐 있다가 RAIM에 넘기는 즉시 지워집니다(넘기지 못하면 5분 뒤 삭제). 다른 곳으로 보내지 않습니다.',
             '툴바의 확장 아이콘을 누르면 기본 다운로드 사유와 요청 간격을 바꿀 수 있습니다.',
-            '압축을 푼 확장 폴더를 옮기거나 지우면 확장이 꺼집니다.',
+            '설치 파일은 이 설명서의 내려받기 버튼으로만 받으세요. 다른 사람이 메신저 등으로 보낸 zip은 내용이 바뀌었을 수 있습니다.',
             '공용 PC라면 사용 후 공공예약 관리자에서 로그아웃해 주세요.',
           ]}
         />
